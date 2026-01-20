@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  externalId    String?
+  restaurantId  Int
+  restaurant    Restaurant  @relation(fields: [restaurantId], references: [id])
+  timestamp     DateTime
+  totalAmount   Float
+  serverId      Int?
+  server        Server?     @relation(fields: [serverId], references: [id])
+  orderItems    OrderItem[]
+  metadata      String?
+  createdAt     DateTime    @default(now())
+  
+  @@index([restaurantId, timestamp])
+  @@index([timestamp])
+}
+
+model OrderItem {
+  id             Int       @id @default(autoincrement())
+  orderId        Int
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId     Int
+  menuItem       MenuItem  @relation(fields: [menuItemId], references: [id])
+  quantity       Int
+  priceAtTime    Float
+  discountAmount Float     @default(0)
+  createdAt      DateTime  @default(now())
+  
+  @@index([menuItemId])
+  @@index([orderId])
+}
+
+model MenuItem {
+  id            Int            @id @default(autoincrement())
+  restaurantId  Int
+  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id])
+  name          String
+  category      String?
+  currentPrice  Float
+  cost          Float?
+  isActive      Boolean        @default(true)
+  orderItems    OrderItem[]
+  baselines     ItemBaseline[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  @@index([restaurantId])
+  @@unique([restaurantId, name])
+}
+
+model Server {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  name         String
+  externalId   String?
+  orders       Order[]
+  createdAt    DateTime   @default(now())
+  
+  @@index([restaurantId])
+}
+
+model Restaurant {
+  id          Int             @id @default(autoincrement())
+  name        String
+  orders      Order[]
+  menuItems   MenuItem[]
+  servers     Server[]
+  aggregates  TimeAggregate[]
+  insights    Insight[]
+  decisions   Decision[]
+  simulations Simulation[]
+  createdAt   DateTime        @default(now())
+}
+
+model TimeAggregate {
+  id             Int        @id @default(autoincrement())
+  restaurantId   Int
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id])
+  periodType     String
+  periodStart    DateTime
+  periodEnd      DateTime
+  totalRevenue   Float
+  totalOrders    Int
+  avgOrderValue  Float
+  totalItems     Int
+  uniqueItems    Int
+  hourOfDay      Int?
+  dayOfWeek      Int?
+  computedAt     DateTime   @default(now())
+  version        Int        @default(1)
+  
+  @@unique([restaurantId, periodType, periodStart, periodEnd, version])
+  @@index([restaurantId, periodType, periodStart])
+}
+
+model ItemBaseline {
+  id                 Int      @id @default(autoincrement())
+  menuItemId         Int
+  menuItem           MenuItem @relation(fields: [menuItemId], references: [id])
+  periodStart        DateTime
+  periodEnd          DateTime
+  avgDailyQuantity   Float
+  stdDevQuantity     Float
+  avgDailyRevenue    Float
+  stdDevRevenue      Float
+  priceElasticity    Float?
+  seasonalityIndex   Float?
+  trendSlope         Float?
+  sampleSize         Int
+  confidenceScore    Float
+  computedAt         DateTime @default(now())
+  version            Int      @default(1)
+  
+  @@unique([menuItemId, periodEnd, version])
+  @@index([menuItemId, periodEnd])
+}
+
+model Insight {
+  id              Int        @id @default(autoincrement())
+  restaurantId    Int
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id])
+  type            String
+  severity        String
+  observation     String
+  explanation     String
+  causalFactors   String
+  formula         String
+  assumptions     String
+  sampleSize      Int?
+  confidenceScore Float
+  recommendation  String?
+  decisionId      Int?       @unique
+  decision        Decision?  @relation(fields: [decisionId], references: [id])
+  createdAt       DateTime   @default(now())
+  expiresAt       DateTime?
+  
+  @@index([restaurantId, createdAt])
+  @@index([type, severity])
+}
+
+model Decision {
+  id              Int              @id @default(autoincrement())
+  restaurantId    Int
+  restaurant      Restaurant       @relation(fields: [restaurantId], references: [id])
+  type            String
+  entityType      String
+  entityId        Int?
+  recommendation  String
+  rationale       String
+  predictedImpact String
+  simulationId    Int?
+  simulation      Simulation?      @relation(fields: [simulationId], references: [id])
+  status          String           @default("pending")
+  userFeedback    String?
+  implementedAt   DateTime?
+  outcome         DecisionOutcome?
+  insight         Insight?
+  createdAt       DateTime         @default(now())
+  
+  @@index([restaurantId, status])
+  @@index([entityType, entityId])
+}
+
+model DecisionOutcome {
+  id             Int      @id @default(autoincrement())
+  decisionId     Int      @unique
+  decision       Decision @relation(fields: [decisionId], references: [id])
+  actualImpact   String
+  accuracyScore  Float
+  errorAnalysis  String
+  beforeMetrics  String
+  afterMetrics   String
+  evaluatedAt    DateTime @default(now())
+  daysSinceImpl  Int
+  
+  @@index([accuracyScore])
+}
+
+model Simulation {
+  id                 Int        @id @default(autoincrement())
+  restaurantId       Int
+  restaurant         Restaurant @relation(fields: [restaurantId], references: [id])
+  type               String
+  inputParams        String
+  assumptions        String
+  assumptionSource   String
+  projectedMetrics   String
+  confidenceScore    Float
+  sensitivityData    String?
+  decisions          Decision[]
+  createdAt          DateTime   @default(now())
+  
+  @@index([restaurantId, type])
+}
