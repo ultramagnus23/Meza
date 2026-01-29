@@ -63,7 +63,7 @@ export const api = {
   createAlert: (data: any) =>
     fetchAPI<any>("/alerts/create", { method: "POST", body: JSON.stringify(data) }),
   getAlerts: (params?: { restaurantId?: string; type?: string; severity?: string; unreadOnly?: boolean }) =>
-    fetchAPI<any>(`/alerts/create?${new URLSearchParams(params as any)}`),
+    fetchAPI<any>(`/alerts/list?${new URLSearchParams(params as any)}`),
 
   // Reports
   getDailySummary: (params?: { restaurantId?: string; date?: string; language?: string }) =>

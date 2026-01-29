@@ -160,7 +160,8 @@ export async function GET(request: Request) {
         daysUntilStockout,
         recommendedOrder,
         item.unit,
-        urgency
+        urgency,
+        safetyStockDays
       )
 
       return {
@@ -241,7 +242,8 @@ function generateReasoning(
   daysUntilStockout: number,
   recommendedOrder: number,
   unit: string,
-  urgency: string
+  urgency: string,
+  safetyStockDays: number
 ): string {
   const lines = []
 
@@ -260,7 +262,7 @@ function generateReasoning(
 
   if (recommendedOrder > 0) {
     lines.push(
-      `💡 Recommended order: ${recommendedOrder.toFixed(1)} ${unit} (includes ${3} days safety stock)`
+      `💡 Recommended order: ${recommendedOrder.toFixed(1)} ${unit} (includes ${safetyStockDays} days safety stock)`
     )
   } else {
     lines.push(`✅ No order needed at this time.`)

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get("restaurantId")
     const menuItemId = searchParams.get("menuItemId")
-    const days = parseInt(searchParams.get("days") || "90")
+    const days = Math.min(365, Math.max(1, parseInt(searchParams.get("days") || "90")))
 
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)

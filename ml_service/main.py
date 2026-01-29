@@ -15,11 +15,15 @@ app = FastAPI(
     description="ML endpoints for demand forecasting, theft detection, and elasticity calculation",
     version="1.0.0"
 )
+import os
 
-# Enable CORS
+# Enable CORS - Use environment variable for allowed origins in production
+# Default to localhost for development
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -145,8 +149,11 @@ async def forecast_demand(request: DemandForecastRequest):
             # Add day-of-week seasonality if detected
             if seasonality_detected and len(quantities) >= 7:
                 dow = forecast_date.weekday()
-                dow_factor = quantities[-(7 - dow)] / recent_avg if recent_avg > 0 else 1
-                base_prediction *= dow_factor
+                idx = -(7 - dow)
+                # Bounds check for safety
+                if abs(idx) <= len(quantities) and recent_avg > 0:
+                    dow_factor = quantities[idx] / recent_avg
+                    base_prediction *= dow_factor
 
             # Ensure non-negative
             prediction = max(0, round(base_prediction, 1))

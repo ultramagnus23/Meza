@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get("restaurantId")
-    const days = parseInt(searchParams.get("days") || "30")
+    const days = Math.min(365, Math.max(1, parseInt(searchParams.get("days") || "30")))
 
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - days)
