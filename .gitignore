@@ -9,6 +9,7 @@
 
 # production
 /build
+/dist
 
 # debug
 npm-debug.log*
@@ -26,3 +27,18 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /lib/generated/prisma
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Database
+*.db-journal

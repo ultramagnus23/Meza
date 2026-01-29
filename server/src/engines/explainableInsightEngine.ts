@@ -337,8 +337,8 @@ export class ExplainableInsightEngine {
     console.log(`[ExplainableInsightEngine] Insight stored with ${(insight.confidenceScore * 100).toFixed(0)}% confidence`);
   }
 
-  // Changed menuItemId type to string (CUID)
-  async analyzeItemPerformance(menuItemId: string): Promise<DecomposedInsight | null> {
+  // Changed menuItemId type to number (autoincrement)
+  async analyzeItemPerformance(menuItemId: number): Promise<DecomposedInsight | null> {
     const baseline = await this.prisma.itemBaseline.findFirst({
       where: { menuItemId },
       orderBy: { computedAt: 'desc' },
