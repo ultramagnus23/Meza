@@ -9,7 +9,7 @@ import { ComputationEngine } from './engines/computationEngine';
 import { ExplainableInsightEngine } from './engines/explainableInsightEngine';
 
 const app = express();
-const prisma = new PrismaClient();S
+const prisma = new PrismaClient();
 const upload = multer({ dest: 'uploads/' });
 
 // Initialize engines

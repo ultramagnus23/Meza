@@ -87,7 +87,7 @@ export class ComputationEngine {
     }
   }
 
-  async computeItemBaseline(menuItemId: string, lookbackDays: number = 30): Promise<void> {
+  async computeItemBaseline(menuItemId: number, lookbackDays: number = 30): Promise<void> {
     const endDate = new Date();
     const startDate = subDays(endDate, lookbackDays);
 
