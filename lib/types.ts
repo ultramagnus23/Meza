@@ -4,7 +4,7 @@ export type Currency = "INR" | "USD" | "EUR" | "GBP" | "AUD" | "CAD" | "SGD" | "
 export interface CurrencyRate {
   code: Currency
   symbol: string
-  rate: number // Rate relative to INR (base currency)
+  rate: number
   name: string
 }
 
@@ -12,155 +12,159 @@ export interface CurrencyRate {
 export interface MenuItem {
   id: string
   name: string
-  category: "appetizer" | "main" | "dessert" | "beverage"
-  price: number // In INR
-  cost: number // In INR
-  prepTime: number // minutes
-  popularity: number // 0-100
-  orders: number
-  active: boolean
+  category: string
+  price: number
+  costPrice: number
+  prepTimeMin: number
+  isActive: boolean
   createdAt: string
-  updatedAt: string
 }
 
-export interface MenuEngineering extends MenuItem {
-  engineeringCategory: "Stars" | "Plowhorses" | "Puzzles" | "Dogs"
-  margin: number
+export interface MenuItemEngineering extends MenuItem {
+  classification: "STAR" | "PLOWHORSE" | "PUZZLE" | "DOG"
+  totalSold: number
   revenue: number
-  cannibalization: number
-  revenuePerMinute: number
+  margin: number
 }
 
 // Order models
+export type Channel = "DINE_IN" | "TAKEAWAY" | "ZOMATO" | "SWIGGY" | "DIRECT_DELIVERY" | "OTHER"
+export type PosType = "PETPOOJA" | "URBANPIPER" | "SQUARE" | "MANUAL" | "CSV_IMPORT"
+export type UserRole = "OWNER" | "MANAGER" | "VIEWER"
+export type DigestStatus = "SENT" | "FAILED" | "PENDING"
+
 export interface Order {
   id: string
-  timestamp: string
-  channel: "walk-in" | "booking" | "delivery-direct" | "delivery-zomato" | "delivery-swiggy" | "delivery-doordash"
+  restaurantId: string
+  externalId?: string
+  channel: Channel
   serverId?: string
-  tableId?: string
-  items: OrderItem[]
-  subtotal: number // In INR
-  taxes: number // In INR
-  fees: number // In INR (platform fees for delivery)
-  total: number // In INR
-  status: "pending" | "preparing" | "ready" | "completed" | "cancelled"
-  customerInfo?: {
-    id?: string
-    name?: string
-    phone?: string
-    email?: string
-    isRepeat: boolean
-  }
+  tableNumber?: string
+  subtotal: number
+  tax: number
+  discount: number
+  total: number
+  partySize?: number
+  orderedAt: string
+  completedAt?: string
+  createdAt: string
 }
 
 export interface OrderItem {
+  id: string
+  orderId: string
   menuItemId: string
-  name: string
   quantity: number
-  price: number // In INR
-  cost: number // In INR
+  unitPrice: number
+  totalPrice: number
 }
 
 // Server performance models
 export interface Server {
   id: string
+  restaurantId: string
   name: string
-  active: boolean
-  hireDate: string
+  isActive: boolean
+  createdAt: string
 }
 
-export interface ServerPerformance extends Server {
+export interface ServerStats extends Server {
   totalOrders: number
   totalRevenue: number
   avgCheckSize: number
-  upsellRate: number
-  avgServiceTime: number
-  effectivenessScore: number
-  shiftsWorked: number
-  hoursWorked: number
+  upsellScore: number
 }
 
-// Channel models
+// Channel metrics
 export interface ChannelMetrics {
-  channel: Order["channel"]
+  channel: Channel
   totalOrders: number
   totalRevenue: number
-  grossMargin: number
-  platformFees: number
-  netMargin: number
-  netMarginPercent: number
   avgOrderValue: number
-  customerAcquisitionCost: number
-  repeatRate: number
-  lifetimeValue: number
-  ltvCacRatio: number
+  totalDiscount: number
+  netRevenue: number
 }
 
-// Capacity models
-export interface TimeSlot {
-  hour: number
-  dayPart: "breakfast" | "lunch" | "dinner" | "late-night"
-  orders: number
-  revenue: number
-  capacity: number
-  utilizationPercent: number
-  avgTableTurnover: number
-  revPASH: number
-}
-
-export interface TableMetrics {
-  size: 2 | 4 | 6 | 8
-  count: number
-  totalSeats: number
-  avgUtilization: number
-  avgRevenue: number
-  revenuePerSeat: number
-}
-
-// Decision engine models
-export interface Decision {
-  id: string
-  action: "Promote" | "Reprice" | "Remove" | "Optimize" | "Redesign"
-  item: string
-  category: "Menu" | "Channel" | "Operations" | "Capacity"
-  priority: "high" | "medium" | "low"
-  impact: {
-    min: number // In INR
-    max: number // In INR
-    confidence: number // 0-100
-  }
-  reason: string
-  risks: string[]
-  recommendation: string
-  status: "pending" | "implementing" | "completed" | "dismissed"
-  createdAt: string
-  implementedAt?: string
-}
-
-// Scenario simulation models
-export interface Scenario {
+// Restaurant model
+export interface Restaurant {
   id: string
   name: string
-  description: string
-  changes: ScenarioChange[]
-  projectedImpact: {
-    revenue: { current: number; projected: number; change: number; changePercent: number }
-    margin: { current: number; projected: number; change: number; changePercent: number }
-    orders: { current: number; projected: number; change: number; changePercent: number }
-  }
+  city: string
+  timezone: string
+  currency: string
+  totalSeats: number
+  hoursOpen: number
+  posSystem: PosType
+  posWebhookSecret?: string
+  createdAt: string
+  updatedAt: string
+}
+
+// Item Association (Apriori)
+export interface ItemAssociation {
+  id: string
+  restaurantId: string
+  itemAId: string
+  itemBId: string
+  itemAName: string
+  itemBName: string
+  support: number
   confidence: number
-  risks: string[]
+  lift: number
+  occurrences: number
+  computedAt: string
+}
+
+// Digest
+export interface DigestConfig {
+  id: string
+  restaurantId: string
+  isEnabled: boolean
+  sendTime: string
+  timezone: string
+  lookbackDays: number
+  maxInsights: number
+  includeRevenue: boolean
+  includeMenu: boolean
+  includeChannel: boolean
+  includeServer: boolean
+}
+
+export interface DigestLog {
+  id: string
+  restaurantId: string
+  sentAt: string
+  recipientPhone: string
+  status: DigestStatus
+  whatsappMsgId?: string
+  messageBody: string
+  insightCount: number
+  errorMessage?: string
+}
+
+// Daily snapshot
+export interface DailySnapshot {
+  id: string
+  restaurantId: string
+  date: string
+  totalRevenue: number
+  totalOrders: number
+  avgOrderValue: number
+  revpash: number
+  topItemId?: string
+  topChannelName?: string
+  coverCount: number
   createdAt: string
 }
 
+// Legacy types kept for backward compatibility
 export interface ScenarioChange {
   type: "menu_price" | "menu_remove" | "menu_add" | "channel_mix" | "staffing" | "hours"
   target: string
-  value: any
+  value: unknown
   description: string
 }
 
-// Analytics aggregation models
 export interface Analytics {
   period: "day" | "week" | "month" | "quarter" | "year"
   startDate: string
