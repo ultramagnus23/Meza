@@ -1,4 +1,5 @@
 import type { Currency, CurrencyRate } from "./types"
+export type { Currency, CurrencyRate } from "./types"
 
 // Base currency rates (relative to INR)
 export const CURRENCY_RATES: Record<Currency, CurrencyRate> = {
