@@ -52,7 +52,6 @@ export async function generateInsights(
     const currentRevenue = currentOrders.reduce((s, o) => s + o.total, 0);
     const prevRevenue = prevOrders.reduce((s, o) => s + o.total, 0);
     const currentOrCount = currentOrders.length;
-    const prevOrCount = prevOrders.length;
 
     if (prevRevenue > 0) {
       const revChange = ((currentRevenue - prevRevenue) / prevRevenue) * 100;
@@ -80,9 +79,6 @@ export async function generateInsights(
         data: { currentRevenue, currentOrCount },
       });
     }
-
-    // suppress unused variable warning
-    void prevOrCount;
   }
 
   if (includeMenu && currentOrders.length > 0) {
