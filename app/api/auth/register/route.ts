@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const { name, email, password, phone } = await req.json();
 
     if (!name || !email || !password) {
-      return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 });
+      return NextResponse.json({ error: "Name, email, and password are required" }, { status: 400 });
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });
