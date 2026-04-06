@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { generateDigestMessage } from "@/lib/digest/generateMessage";
 
 export async function POST() {
   try {
@@ -11,9 +12,7 @@ export async function POST() {
       return NextResponse.json({ error: "No restaurant found" }, { status: 404 });
     }
 
-    // Get the digest preview message
-    const previewRes = await fetch(`${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/digest/preview`);
-    const { message } = await previewRes.json();
+    const message = await generateDigestMessage();
 
     const recipients = restaurant.users
       .filter((ru) => ru.receiveDigest && ru.user.phone)
@@ -23,7 +22,6 @@ export async function POST() {
       return NextResponse.json({ message: "No recipients configured with WhatsApp numbers." });
     }
 
-    // Send via Twilio if configured
     let sent = 0;
     let failed = 0;
 

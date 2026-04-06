@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import Papa from "papaparse";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,28 +11,28 @@ export async function POST(req: NextRequest) {
     }
 
     const text = await file.text();
-    const lines = text.split("\n").filter((l) => l.trim());
-    if (lines.length < 2) {
+    const { data: rows, errors } = Papa.parse<Record<string, string>>(text, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (h) => h.trim().toLowerCase(),
+    });
+
+    if (rows.length === 0) {
       return NextResponse.json({ error: "File is empty or has no data rows" }, { status: 400 });
     }
 
-    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/['"]/g, ""));
     const restaurant = await prisma.restaurant.findFirst();
     if (!restaurant) {
       return NextResponse.json({ error: "No restaurant found. Create one first." }, { status: 404 });
     }
 
     let imported = 0;
-    let errors = 0;
+    let parseErrors = errors.length;
 
-    for (let i = 1; i < lines.length; i++) {
+    for (const row of rows) {
       try {
-        const values = lines[i].split(",").map((v) => v.trim().replace(/^["']|["']$/g, ""));
-        const row: Record<string, string> = {};
-        headers.forEach((h, idx) => { row[h] = values[idx] || ""; });
-
         const orderedAt = new Date(row.timestamp || row.date || row.ordered_at || row.order_date);
-        if (isNaN(orderedAt.getTime())) { errors++; continue; }
+        if (isNaN(orderedAt.getTime())) { parseErrors++; continue; }
 
         const total = parseFloat(row.total || row.total_amount || row.amount || "0");
         const channel = (row.channel || "DINE_IN").toUpperCase().replace(/ /g, "_");
@@ -100,15 +101,15 @@ export async function POST(req: NextRequest) {
 
         imported++;
       } catch {
-        errors++;
+        parseErrors++;
       }
     }
 
     return NextResponse.json({
       success: true,
       imported,
-      errors,
-      total: lines.length - 1,
+      errors: parseErrors,
+      total: rows.length,
     });
   } catch (error) {
     console.error("CSV import error:", error);
