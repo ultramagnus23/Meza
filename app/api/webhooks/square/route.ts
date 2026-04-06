@@ -35,7 +35,8 @@ async function processSquareOrder(payload: Record<string, unknown>) {
   const orderData = (payload.data as Record<string, unknown>)?.object as Record<string, unknown> | undefined;
   if (!orderData) return;
 
-  const total = Number((orderData.total_money as Record<string, unknown>)?.amount || 0) / 100; // Square uses cents
+  const CENTS_PER_DOLLAR = 100;
+  const total = Number((orderData.total_money as Record<string, unknown>)?.amount || 0) / CENTS_PER_DOLLAR;
 
   await prisma.order.create({
     data: {

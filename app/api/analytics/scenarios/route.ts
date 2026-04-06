@@ -18,8 +18,9 @@ export async function POST(req: NextRequest) {
 
     const baseRevenue = orders.reduce((sum, o) => sum + o.total, 0) / 30; // daily avg
 
-    // Simple price elasticity model: -0.5 elasticity (10% price increase → 5% quantity decrease)
-    const elasticity = -0.5;
+    // Price elasticity assumption: 10% price increase → 5% quantity decrease
+    const DEFAULT_PRICE_ELASTICITY = -0.5;
+    const elasticity = DEFAULT_PRICE_ELASTICITY;
     const priceFactor = 1 + priceChangePct / 100;
     const quantityFactor = 1 + (elasticity * priceChangePct) / 100;
     const projectedRevenue = baseRevenue * priceFactor * quantityFactor;

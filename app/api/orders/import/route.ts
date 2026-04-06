@@ -100,7 +100,8 @@ export async function POST(req: NextRequest) {
         }
 
         imported++;
-      } catch {
+      } catch (rowError) {
+        console.error(`CSV import row error (row ${rows.indexOf(row) + 2}):`, rowError);
         parseErrors++;
       }
     }
