@@ -7,6 +7,11 @@ import fs from 'fs';
 import path from 'path';
 import { ComputationEngine } from './engines/computationEngine';
 import { ExplainableInsightEngine } from './engines/explainableInsightEngine';
+import { ContextualAssociationEngine } from './engines/association.engine';
+import { IdentityEngine } from './engines/identity.engine';
+import { ArchetypeEngine } from './engines/archetype.engine';
+import { WaiterSignalProcessor } from './engines/signal.processor';
+import { WhatsAppBot } from './whatsapp/bot';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -15,6 +20,11 @@ const upload = multer({ dest: 'uploads/' });
 // Initialize engines
 const computationEngine = new ComputationEngine(prisma);
 const insightEngine = new ExplainableInsightEngine(prisma);
+const associationEngine = new ContextualAssociationEngine(prisma);
+const identityEngine = new IdentityEngine(prisma);
+const archetypeEngine = new ArchetypeEngine(prisma);
+const signalProcessor = new WaiterSignalProcessor(prisma);
+const whatsappBot = new WhatsAppBot(prisma);
 
 app.use(cors());
 app.use(express.json());
@@ -142,6 +152,24 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
 
         // Create or find order
         const orderId = row.order_id || row.id;
+        const channel =
+          (row.channel || row.order_channel || row.source || 'DIRECT')
+            .toString()
+            .toUpperCase();
+        const orderType =
+          (row.order_type || row.type || (channel === 'DIRECT' ? 'DINE_IN' : 'DELIVERY'))
+            .toString()
+            .toUpperCase();
+        const customerPhone = row.customer_phone || row.phone || row.customerPhone;
+        const guestCount = row.guest_count || row.party_size || row.cover_count;
+        const tableNumber = row.table_number || row.table || row.tableNo;
+        const metadata = {
+          tableNumber: tableNumber ? tableNumber.toString() : undefined,
+          zomatoId: row.zomato_id || row.zomatoId,
+          swiggyId: row.swiggy_id || row.swiggyId,
+          phone: customerPhone ? customerPhone.toString() : undefined,
+          partySize: guestCount ? parseInt(guestCount) : undefined,
+        };
         let order = await prisma.order.findFirst({
           where: {
             restaurantId,
@@ -158,6 +186,11 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
               timestamp,
               totalAmount: parseFloat(row.total_amount || row.total || row.amount) || 0,
               serverId,
+              channel,
+              orderType,
+              customerPhone: customerPhone ? customerPhone.toString() : null,
+              guestCount: guestCount ? parseInt(guestCount) : null,
+              metadata: JSON.stringify(metadata),
             },
           });
         }
@@ -172,6 +205,8 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
             discountAmount: row.discount ? parseFloat(row.discount) : 0,
           },
         });
+
+        await identityEngine.resolveCustomerIdentity(order);
 
         processedCount++;
       } catch (rowError) {
@@ -188,6 +223,7 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
     // Generate insights
     console.log('Generating insights...');
     await insightEngine.analyzeRevenueChange(restaurantId, 7);
+    await identityEngine.generateRepeatInsights(restaurantId);
 
     // Cleanup uploaded file
     fs.unlinkSync(filePath);
@@ -248,6 +284,25 @@ app.get('/api/analytics/comprehensive', async (req, res) => {
   }
 });
 
+// WhatsApp inbound webhook
+app.post('/api/whatsapp/inbound', async (req, res) => {
+  try {
+    const { phone, body, restaurantId } = req.body;
+    if (!phone || !body || !restaurantId) {
+      return res.status(400).json({ error: 'phone, body, restaurantId required' });
+    }
+    const result = await whatsappBot.processInboundMessage({
+      phone,
+      body,
+      restaurantId: parseInt(restaurantId),
+    });
+    res.json({ success: true, response: result.response });
+  } catch (error) {
+    console.error('Error processing WhatsApp message:', error);
+    res.status(500).json({ error: 'Failed to process message' });
+  }
+});
+
 // Get insights for a restaurant
 app.get('/api/insights', async (req, res) => {
   try {
@@ -269,6 +324,41 @@ app.post('/api/recompute', async (req, res) => {
   } catch (error) {
     console.error('Error recomputing:', error);
     res.status(500).json({ error: 'Failed to recompute' });
+  }
+});
+
+// Manual engine triggers
+app.post('/api/engines/associations', async (req, res) => {
+  try {
+    const { restaurantId } = req.body;
+    const results = await associationEngine.run(restaurantId);
+    res.json({ success: true, count: results.length });
+  } catch (error) {
+    console.error('Error running association engine:', error);
+    res.status(500).json({ error: 'Failed to run association engine' });
+  }
+});
+
+app.post('/api/engines/archetypes', async (req, res) => {
+  try {
+    const { restaurantId } = req.body;
+    await archetypeEngine.run(restaurantId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error running archetype engine:', error);
+    res.status(500).json({ error: 'Failed to run archetype engine' });
+  }
+});
+
+app.post('/api/engines/signals', async (req, res) => {
+  try {
+    const { restaurantId } = req.body;
+    await signalProcessor.processPendingSignals(restaurantId);
+    await signalProcessor.aggregateSignals(restaurantId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error running signal processor:', error);
+    res.status(500).json({ error: 'Failed to run signal processor' });
   }
 });
 

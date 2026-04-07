@@ -17,6 +17,35 @@ datasource db {
 // Severity: LOW, MEDIUM, HIGH, CRITICAL
 // MovementType: PURCHASE, USAGE, WASTE, THEFT
 
+enum ShiftType {
+  BREAKFAST
+  LUNCH
+  EVENING
+  DINNER
+}
+
+enum SignalType {
+  DISH_REQUEST
+  DISH_COMPLAINT
+  EARLY_BILL
+  UPSELL_WIN
+  UPSELL_FAIL
+  TABLE_FEEDBACK
+  POSITIVE_SHOUTOUT
+  OTHER
+}
+
+enum SessionRole {
+  OWNER
+  MANAGER
+  WAITER
+}
+
+enum PrefTier {
+  MEDIUM
+  CUSTOM
+}
+
 model Restaurant {
   id          Int              @id @default(autoincrement())
   name        String
@@ -37,7 +66,33 @@ model Restaurant {
   decisions   Decision[]
   simulations Simulation[]
   suppliers   Supplier[]
+  customers   Customer[]
+  customerArchetypes CustomerArchetype[]
+  tableClusters TableCluster[]
+  waiterSignals WaiterSignal[]
+  whatsappSessions WhatsAppSession[]
+  whatsappPreferences WhatsAppPreference[]
+  whatsappInbound WhatsAppInbound[]
+  users       User[]
+  contextualAssociations ContextualAssociation[]
+  digestLogs  DigestLog[]
   createdAt   DateTime         @default(now())
+}
+
+model User {
+  id           String            @id @default(cuid())
+  restaurantId Int?
+  phone        String?           @unique
+  name         String?
+  role         String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  restaurant   Restaurant?       @relation(fields: [restaurantId], references: [id])
+  whatsappPreference WhatsAppPreference?
+  whatsappSessions   WhatsAppSession[]
+
+  @@index([restaurantId])
 }
 
 model Order {
@@ -73,6 +128,7 @@ model Order {
 
   metadata      String?
   createdAt     DateTime    @default(now())
+  customerVisit CustomerVisit?
 
   @@index([restaurantId, timestamp])
   @@index([timestamp])
@@ -126,6 +182,9 @@ model MenuItem {
   orderItems      OrderItem[]
   baselines       ItemBaseline[]
   ingredients     MenuIngredient[]
+  waiterSignals   WaiterSignal[]
+  associationsFrom ContextualAssociation[] @relation("AssociationItemA")
+  associationsTo ContextualAssociation[] @relation("AssociationItemB")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -257,6 +316,7 @@ model Server {
   name         String
   externalId   String?
   orders       Order[]
+  waiterSignals WaiterSignal[]
   createdAt    DateTime   @default(now())
 
   @@index([restaurantId])
@@ -381,4 +441,235 @@ model Simulation {
   createdAt          DateTime   @default(now())
   
   @@index([restaurantId, type])
+}
+
+model Customer {
+  id               String              @id @default(cuid())
+  restaurantId     Int
+  phone            String?
+  zomatoId         String?
+  swiggyId         String?
+  displayName      String?
+  archetypeId      String?
+  firstSeenAt      DateTime
+  lastSeenAt       DateTime
+  visitCount       Int                 @default(1)
+  totalSpend       Float               @default(0)
+  avgOrderValue    Float               @default(0)
+  preferredChannel String?
+  preferredTime    String?
+  notes            String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  restaurant       Restaurant          @relation(fields: [restaurantId], references: [id])
+  archetype        CustomerArchetype?  @relation(fields: [archetypeId], references: [id])
+  visits           CustomerVisit[]
+  signals          CustomerSignal[]
+
+  @@index([restaurantId, phone])
+  @@index([restaurantId, zomatoId])
+  @@index([restaurantId, swiggyId])
+}
+
+model CustomerVisit {
+  id         String   @id @default(cuid())
+  customerId String
+  orderId    Int      @unique
+  visitedAt  DateTime
+  partySize  Int?
+  channel    String
+  totalSpend Float
+  tableNumber String?
+  serverId   Int?
+  notes      String?
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  order      Order    @relation(fields: [orderId], references: [id])
+  server     Server?  @relation(fields: [serverId], references: [id])
+
+  @@index([customerId, visitedAt])
+  @@index([orderId])
+}
+
+model WaiterSignal {
+  id             String     @id @default(cuid())
+  restaurantId   Int
+  serverId       Int?
+  shiftDate      DateTime
+  shiftType      ShiftType
+  signalType     SignalType
+  body           String
+  bodyNormalized String?
+  menuItemId     Int?
+  sentiment      Float?
+  processed      Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id])
+  server         Server?    @relation(fields: [serverId], references: [id])
+  menuItem       MenuItem?  @relation(fields: [menuItemId], references: [id])
+
+  @@index([restaurantId, createdAt])
+  @@index([menuItemId, signalType])
+}
+
+model CustomerSignal {
+  id         String     @id @default(cuid())
+  customerId String
+  type       SignalType
+  body       String
+  orderId    Int?
+  createdAt  DateTime   @default(now())
+
+  customer   Customer   @relation(fields: [customerId], references: [id])
+
+  @@index([customerId, createdAt])
+}
+
+model CustomerArchetype {
+  id             String     @id @default(cuid())
+  restaurantId   Int
+  name           String
+  description    String
+  avgSpend       Float
+  avgPartySize   Float
+  preferredTime  String
+  preferredChannel String
+  visitFrequency String
+  customerCount  Int
+  revenueShare   Float
+  topItems       Json
+  computedAt     DateTime   @default(now())
+
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id])
+  customers      Customer[]
+
+  @@index([restaurantId, computedAt])
+}
+
+model TableCluster {
+  id              String     @id @default(cuid())
+  restaurantId    Int
+  tableNumber     String
+  dayOfWeek       Int
+  timeband        String
+  avgPartySize    Float
+  avgSpend        Float
+  dominantChannel String
+  visitCount      Int
+  probabilityRepeat Float
+  computedAt      DateTime   @default(now())
+
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@index([restaurantId, tableNumber, dayOfWeek, timeband])
+}
+
+model WhatsAppSession {
+  id            String      @id @default(cuid())
+  phone         String
+  restaurantId  Int
+  userId        String?
+  role          SessionRole
+  state         String
+  context       Json        @default("{}")
+  lastMessageAt DateTime    @default(now())
+  expiresAt     DateTime
+  createdAt     DateTime    @default(now())
+
+  restaurant    Restaurant  @relation(fields: [restaurantId], references: [id])
+  user          User?       @relation(fields: [userId], references: [id])
+
+  @@index([restaurantId, phone])
+  @@index([expiresAt])
+}
+
+model WhatsAppPreference {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  restaurantId         Int
+  digestEnabled        Boolean  @default(true)
+  digestTime           String   @default("08:00")
+  digestDays           Json     @default("[1,2,3,4,5,6,7]")
+  wantsMenuInsights    Boolean  @default(true)
+  wantsChannelInsights Boolean  @default(true)
+  wantsServerInsights  Boolean  @default(true)
+  wantsAssocInsights   Boolean  @default(true)
+  wantsArchetypeInsights Boolean @default(true)
+  wantsCustomerInsights Boolean @default(true)
+  revenueDropThreshold Float?
+  revpashMinThreshold  Float?
+  channelMarginMin     Float?
+  dogItemMinOrders     Int?
+  alertOnRevenueDrop   Boolean  @default(false)
+  alertOnLowRevpash    Boolean  @default(false)
+  alertOnChannelDrain  Boolean  @default(false)
+  alertOnNewArchetype  Boolean  @default(false)
+  tier                 PrefTier @default(MEDIUM)
+
+  user                 User      @relation(fields: [userId], references: [id])
+  restaurant           Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@index([restaurantId])
+}
+
+model WhatsAppInbound {
+  id          String     @id @default(cuid())
+  from        String
+  restaurantId Int?
+  body        String
+  intent      String?
+  handledBy   String?
+  sessionId   String?
+  receivedAt  DateTime   @default(now())
+
+  restaurant  Restaurant? @relation(fields: [restaurantId], references: [id])
+
+  @@index([restaurantId, receivedAt])
+  @@index([from, receivedAt])
+}
+
+model ContextualAssociation {
+  id          String   @id @default(cuid())
+  restaurantId Int
+  itemAId     Int
+  itemBId     Int
+  timeband    String
+  channel     String
+  partySizeBucket String
+  serverTier  String
+  support     Float
+  confidence  Float
+  lift        Float
+  occurrences Int
+  estimatedWeeklyUplift Float
+  trainabilityScore Float
+  computedAt DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+  itemA      MenuItem   @relation("AssociationItemA", fields: [itemAId], references: [id])
+  itemB      MenuItem   @relation("AssociationItemB", fields: [itemBId], references: [id])
+
+  @@unique([restaurantId, itemAId, itemBId, timeband, channel, partySizeBucket, serverTier])
+  @@index([restaurantId, itemAId, lift])
+}
+
+model DigestLog {
+  id          String   @id @default(cuid())
+  restaurantId Int
+  userId      String?
+  phone       String
+  messageType String
+  status      String
+  reason      String?
+  message     String?
+  createdAt   DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+  user       User?      @relation(fields: [userId], references: [id])
+
+  @@index([restaurantId, createdAt])
+  @@index([phone, createdAt])
+  @@index([messageType, createdAt])
 }
