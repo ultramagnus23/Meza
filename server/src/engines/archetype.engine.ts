@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { differenceInDays, subDays } from 'date-fns';
+import { subDays } from 'date-fns';
+
+const DEFAULT_CLUSTER_CANDIDATES = [4, 5, 6];
+const MIN_SILHOUETTE_IMPROVEMENT = 0.05;
 
 type FeatureVector = {
   customerId: string;
@@ -45,14 +48,14 @@ export class ArchetypeEngine {
     if (featureVectors.length < 4) return;
 
     const normalizedVectors = normalizeFeatures(featureVectors);
-    const candidateKs = [4, 5, 6].filter((k) => k <= normalizedVectors.length);
+    const candidateKs = DEFAULT_CLUSTER_CANDIDATES.filter((k) => k <= normalizedVectors.length);
     let best = runKMeans(normalizedVectors, candidateKs[0]);
     let bestScore = silhouetteScore(normalizedVectors, best.assignments);
 
     for (const k of candidateKs.slice(1)) {
       const candidate = runKMeans(normalizedVectors, k);
       const score = silhouetteScore(normalizedVectors, candidate.assignments);
-      if (score > bestScore + 0.05) {
+      if (score > bestScore + MIN_SILHOUETTE_IMPROVEMENT) {
         best = candidate;
         bestScore = score;
       }

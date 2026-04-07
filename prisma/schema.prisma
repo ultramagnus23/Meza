@@ -91,6 +91,7 @@ model User {
   restaurant   Restaurant?       @relation(fields: [restaurantId], references: [id])
   whatsappPreference WhatsAppPreference?
   whatsappSessions   WhatsAppSession[]
+  digestLogs         DigestLog[]
 
   @@index([restaurantId])
 }

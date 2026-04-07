@@ -1,6 +1,11 @@
 import { PrismaClient, Order } from '@prisma/client';
 import { differenceInDays, subDays } from 'date-fns';
 
+const REPEAT_DECLINE_MULTIPLIER = 1.8;
+const ZOMATO_CONVERSION_THRESHOLD = 0.15;
+const SWIGGY_CONVERSION_THRESHOLD = 0.05;
+const REPEAT_PROBABILITY_BASELINE = 3;
+
 type ParsedMetadata = {
   tableNumber?: string;
   zomatoId?: string;
@@ -50,7 +55,7 @@ export class IdentityEngine {
           phone: phone || null,
           zomatoId: metadata.zomatoId || null,
           swiggyId: metadata.swiggyId || null,
-          displayName: phone ? `Regular ${phone.slice(-4)}` : undefined,
+          displayName: phone ? formatDisplayName(phone) : undefined,
           firstSeenAt: order.timestamp,
           lastSeenAt: order.timestamp,
           visitCount: 1,
@@ -131,7 +136,7 @@ export class IdentityEngine {
         }
         const avgGap = gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
         const daysSinceLast = differenceInDays(new Date(), customer.lastSeenAt);
-        if (avgGap > 0 && daysSinceLast > avgGap * 1.8) {
+        if (avgGap > 0 && daysSinceLast > avgGap * REPEAT_DECLINE_MULTIPLIER) {
           await this.createInsight(
             restaurantId,
             'REPEAT_DECLINE',
@@ -236,7 +241,7 @@ export class IdentityEngine {
           avgSpend: spend,
           dominantChannel: order.channel,
           visitCount: 1,
-          probabilityRepeat: 0.33,
+          probabilityRepeat: 1 / REPEAT_PROBABILITY_BASELINE,
         },
       });
       return;
@@ -246,7 +251,7 @@ export class IdentityEngine {
     const avgPartySize =
       (existing.avgPartySize * existing.visitCount + partySize) / visitCount;
     const avgSpend = (existing.avgSpend * existing.visitCount + spend) / visitCount;
-    const probabilityRepeat = Math.min(1, visitCount / 3);
+    const probabilityRepeat = Math.min(1, visitCount / REPEAT_PROBABILITY_BASELINE);
 
     await this.prisma.tableCluster.update({
       where: { id: existing.id },
@@ -288,7 +293,7 @@ export class IdentityEngine {
     for (const [channel, stats] of channelStats.entries()) {
       if (channel === 'DIRECT') continue;
       const conversionRate = stats.total > 0 ? stats.converted / stats.total : 0;
-      if (channel === 'ZOMATO' && conversionRate > 0.15) {
+      if (channel === 'ZOMATO' && conversionRate > ZOMATO_CONVERSION_THRESHOLD) {
         await this.createInsight(
           restaurantId,
           'ACQUISITION_CHANNEL',
@@ -296,7 +301,7 @@ export class IdentityEngine {
           'This channel is bringing repeat dine-in customers.'
         );
       }
-      if (channel === 'SWIGGY' && conversionRate < 0.05) {
+      if (channel === 'SWIGGY' && conversionRate < SWIGGY_CONVERSION_THRESHOLD) {
         await this.createInsight(
           restaurantId,
           'CHANNEL_DRAIN',
@@ -351,4 +356,12 @@ function getTimeband(date: Date): string {
   if (hour < 15) return 'LUNCH';
   if (hour < 19) return 'EVENING';
   return 'DINNER';
+}
+
+function formatDisplayName(phone: string): string {
+  const trimmed = phone.trim();
+  if (trimmed.length >= 4) {
+    return `Regular ${trimmed.slice(-4)}`;
+  }
+  return 'Regular';
 }

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { addHours, addMinutes, startOfDay } from 'date-fns';
+import { addDays, addHours, addMinutes, startOfDay } from 'date-fns';
 
 export type MessageType = 'DIGEST' | 'ALERT' | 'BOT_REPLY' | 'WAITER_PROMPT';
 
@@ -160,7 +160,7 @@ export class WhatsAppRateLimiter {
 
     if (quietStartHour > quietEndHour) {
       if (now >= start || now <= end) {
-        const nextAllowed = now >= start ? addHours(end, 24) : end;
+        const nextAllowed = now >= start ? addDays(end, 1) : end;
         return { allowed: false, reason: 'Quiet hours', nextAllowedAt: nextAllowed };
       }
     } else if (now >= start && now <= end) {

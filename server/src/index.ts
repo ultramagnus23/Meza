@@ -152,6 +152,7 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
 
         // Create or find order
         const orderId = row.order_id || row.id;
+        // CSV aliases supported for channel/order_type/customer/guest/table fields
         const channel =
           (row.channel || row.order_channel || row.source || 'DIRECT')
             .toString()
@@ -168,7 +169,7 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
           zomatoId: row.zomato_id || row.zomatoId,
           swiggyId: row.swiggy_id || row.swiggyId,
           phone: customerPhone ? customerPhone.toString() : undefined,
-          partySize: guestCount ? parseInt(guestCount) : undefined,
+          partySize: guestCount ? parseInt(guestCount, 10) : undefined,
         };
         let order = await prisma.order.findFirst({
           where: {
@@ -189,7 +190,7 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
               channel,
               orderType,
               customerPhone: customerPhone ? customerPhone.toString() : null,
-              guestCount: guestCount ? parseInt(guestCount) : null,
+              guestCount: guestCount ? parseInt(guestCount, 10) : null,
               metadata: JSON.stringify(metadata),
             },
           });
@@ -200,7 +201,7 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
           data: {
             orderId: order.id,
             menuItemId: menuItem.id,
-            quantity: parseInt(row.quantity) || 1,
+            quantity: parseInt(row.quantity, 10) || 1,
             priceAtTime: parseFloat(row.price) || menuItem.currentPrice,
             discountAmount: row.discount ? parseFloat(row.discount) : 0,
           },

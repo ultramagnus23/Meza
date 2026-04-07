@@ -1,6 +1,6 @@
 import { PrismaClient, SessionRole, SignalType } from '@prisma/client';
 import { addMinutes, startOfDay, subDays } from 'date-fns';
-import { WhatsAppRateLimiter } from './rateLimit';
+import { WhatsAppRateLimiter, DEFAULT_RULES } from './rateLimit';
 
 const KEYWORD_COMMANDS: Record<string, string> = {
   PAUSE: 'pause_digest',
@@ -16,6 +16,8 @@ const KEYWORD_COMMANDS: Record<string, string> = {
   SETTINGS: 'open_settings_flow',
   REPORT: 'open_report_flow',
 };
+
+const ROLE_VALUES = new Set<SessionRole>(['OWNER', 'MANAGER', 'WAITER']);
 
 export class WhatsAppBot {
   private rateLimiter: WhatsAppRateLimiter;
@@ -36,7 +38,8 @@ export class WhatsAppBot {
       where: { phone: params.phone, restaurantId: params.restaurantId },
     });
 
-    const role = (user?.role?.toUpperCase() as SessionRole) || 'OWNER';
+    const normalizedRole = user?.role?.toUpperCase() as SessionRole | undefined;
+    const role = normalizedRole && ROLE_VALUES.has(normalizedRole) ? normalizedRole : 'OWNER';
 
     await this.prisma.whatsAppInbound.create({
       data: {
@@ -69,7 +72,7 @@ export class WhatsAppBot {
     const replyCount = (context.replyCount || 0) + 1;
     context.replyCount = replyCount;
 
-    if (replyCount > 20) {
+    if (replyCount > DEFAULT_RULES.maxBotRepliesPerSession) {
       await this.updateSession(session.id, 'IDLE', context);
       return { response: 'Session limit reached. Please start again with HELP.' };
     }
@@ -297,11 +300,11 @@ export class WhatsAppBot {
   }
 
   private buildSettingsMenu(): string {
-    return `Your current digest settings. What would you like to change?\n1️⃣ Change digest time\n2️⃣ Change days\n3️⃣ Choose insight types\n4️⃣ Set alert thresholds (Pro)\n5️⃣ Manage team\n6️⃣ Done`;
+    return `Your current digest settings. What would you like to change?\n1) Change digest time\n2) Change days\n3) Choose insight types\n4) Set alert thresholds (Pro)\n5) Manage team\n6) Done`;
   }
 
   private buildInsightOptions(): string {
-    return `Choose insight types (reply with numbers):\n1️⃣ Menu\n2️⃣ Channels\n3️⃣ Servers\n4️⃣ Associations\n5️⃣ Archetypes\n6️⃣ Customers`;
+    return `Choose insight types (reply with numbers):\n1) Menu\n2) Channels\n3) Servers\n4) Associations\n5) Archetypes\n6) Customers`;
   }
 
   private buildThresholdOptions(): string {

@@ -110,6 +110,8 @@ export class ContextualAssociationEngine {
         const lift = countB > 0 ? confidence / (countB / stats.totalOrders) : 0;
         const ordersWithAButNotB = Math.max(countA - occurrences, 0);
         const marginB = marginMap.get(itemBId) || 0;
+        // ordersWithAButNotB (missed upsells) * confidence (capture rate) * marginB (₹ per item)
+        // scaled to weekly impact based on lookback window.
         const estimatedWeeklyUplift =
           ordersWithAButNotB * confidence * marginB * (7 / lookbackDays);
 

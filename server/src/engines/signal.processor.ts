@@ -1,6 +1,12 @@
 import { PrismaClient, SignalType } from '@prisma/client';
 import { subDays } from 'date-fns';
 
+const QUALITY_ALERT_THRESHOLD = 3;
+const MENU_GAP_THRESHOLD = 4;
+const SERVICE_SPEED_THRESHOLD = 3;
+const SERVER_STAR_MULTIPLIER = 2;
+const SERVER_STAR_MIN_WINS = 3;
+
 type ExtractionResult = {
   signalType: SignalType;
   sentiment: number;
@@ -46,7 +52,7 @@ export class WaiterSignalProcessor {
     });
 
     for (const entry of grouped.values()) {
-      if (entry.signalType === 'DISH_COMPLAINT' && entry.count >= 3) {
+      if (entry.signalType === 'DISH_COMPLAINT' && entry.count >= QUALITY_ALERT_THRESHOLD) {
         await this.createInsight(
           restaurantId,
           'QUALITY_ALERT',
@@ -54,7 +60,7 @@ export class WaiterSignalProcessor {
           'Investigate consistency or preparation issues.'
         );
       }
-      if (entry.signalType === 'DISH_REQUEST' && entry.count >= 4) {
+      if (entry.signalType === 'DISH_REQUEST' && entry.count >= MENU_GAP_THRESHOLD) {
         await this.createInsight(
           restaurantId,
           'MENU_GAP',
@@ -62,7 +68,7 @@ export class WaiterSignalProcessor {
           'Consider adding a lighter or requested option.'
         );
       }
-      if (entry.signalType === 'EARLY_BILL' && entry.count >= 3) {
+      if (entry.signalType === 'EARLY_BILL' && entry.count >= SERVICE_SPEED_THRESHOLD) {
         await this.createInsight(
           restaurantId,
           'SERVICE_SPEED',
@@ -96,7 +102,7 @@ export class WaiterSignalProcessor {
 
     for (const [serverId, stats] of serverStats.entries()) {
       const rate = stats.wins + stats.fails > 0 ? stats.wins / (stats.wins + stats.fails) : 0;
-      if (rate > averageRate * 2 && stats.wins >= 3) {
+      if (rate > averageRate * SERVER_STAR_MULTIPLIER && stats.wins >= SERVER_STAR_MIN_WINS) {
         await this.createInsight(
           restaurantId,
           'SERVER_STAR',
