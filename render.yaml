@@ -1,0 +1,23 @@
+# Render Blueprint for MEZA (Experience Intelligence Platform)
+# https://render.com/docs/blueprint-spec
+#
+# Deploy: Render dashboard -> New -> Blueprint -> point at this repo.
+# After the service is created, set the two Supabase env vars in the
+# Render dashboard (they are intentionally sync: false so real values
+# never live in the repo).
+
+services:
+  - type: web
+    name: meza
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /signin
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false # set in Render dashboard: https://<project-ref>.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false # set in Render dashboard: Supabase -> Settings -> API -> anon public key

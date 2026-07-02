@@ -1,14 +1,22 @@
+import { supabase } from './supabase'
+import type { CameraRegion, CameraTableRegion } from './supabase'
+
 export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const { data: { session } } = await supabase.auth.getSession()
+
+  const isFormData = options?.body instanceof FormData
+
   const response = await fetch(`/api${endpoint}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
       ...options?.headers,
     },
   })
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "An error occurred" }))
+    const error = await response.json().catch(() => ({ message: 'An error occurred' }))
     throw new Error(error.message || `API Error: ${response.status}`)
   }
 
@@ -16,62 +24,103 @@ export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Prom
 }
 
 export const api = {
-  // Orders
-  getOrders: (params?: { startDate?: string; endDate?: string; channel?: string }) =>
-    fetchAPI<any>(`/orders?${new URLSearchParams(params as any)}`),
+  // Restaurants
+  getRestaurants: () => fetchAPI<any>('/restaurants'),
+  createRestaurant: (data: { name: string; location: string; timezone?: string; max_capacity?: number }) =>
+    fetchAPI<any>('/restaurants', { method: 'POST', body: JSON.stringify(data) }),
+  getRestaurant: (id: string) => fetchAPI<any>(`/restaurants/${id}`),
+  updateRestaurant: (id: string, data: any) =>
+    fetchAPI<any>(`/restaurants/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
-  // Menu
-  getMenuItems: () => fetchAPI<any>("/menu"),
-  getMenuEngineering: () => fetchAPI<any>("/menu/engineering"),
-  updateMenuItem: (id: string, data: any) => fetchAPI(`/menu/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  // Occupancy
+  getOccupancy: (params?: { restaurantId?: string; days?: number; hour?: number }) =>
+    fetchAPI<any>(`/occupancy?${new URLSearchParams(params as any)}`),
+  insertOccupancy: (data: any) =>
+    fetchAPI<any>('/occupancy', { method: 'POST', body: JSON.stringify(data) }),
+  bulkInsertOccupancy: (data: any[]) =>
+    fetchAPI<any>('/occupancy/bulk', { method: 'POST', body: JSON.stringify(data) }),
 
-  // Analytics
-  getDecisions: () => fetchAPI<any>("/analytics/decisions"),
-  updateDecision: (id: string, status: string) =>
-    fetchAPI(`/analytics/decisions/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
-  getChannelMetrics: () => fetchAPI<any>("/analytics/channels"),
-  getServerPerformance: () => fetchAPI<any>("/analytics/servers"),
-  getCapacityMetrics: () => fetchAPI<any>("/analytics/capacity"),
-  getNewDishMetrics: () => fetchAPI<any>("/analytics/new-dishes"),
-  getOpportunityCost: () => fetchAPI<any>("/analytics/opportunity-cost"),
-  
-  // New Analytics APIs
-  getBostonMatrix: (params?: { restaurantId?: string; days?: number }) =>
-    fetchAPI<any>(`/analytics/boston-matrix?${new URLSearchParams(params as any)}`),
-  getDemandElasticity: (params?: { restaurantId?: string; menuItemId?: string; days?: number }) =>
-    fetchAPI<any>(`/analytics/demand-elasticity?${new URLSearchParams(params as any)}`),
-  getTheftDetection: (params?: { restaurantId?: string; days?: number }) =>
-    fetchAPI<any>(`/analytics/theft-detection?${new URLSearchParams(params as any)}`),
-  getPeakHours: (params?: { restaurantId?: string; days?: number }) =>
-    fetchAPI<any>(`/analytics/peak-hours?${new URLSearchParams(params as any)}`),
+  // POS Orders
+  getOrders: (params?: { restaurantId?: string; days?: number; startDate?: string; endDate?: string }) =>
+    fetchAPI<any>(`/pos-orders?${new URLSearchParams(params as any)}`),
+  uploadOrders: (formData: FormData) =>
+    fetchAPI<any>('/pos-orders', { method: 'POST', body: formData }),
+  insertOrder: (data: any) =>
+    fetchAPI<any>('/pos-orders', { method: 'POST', body: JSON.stringify(data) }),
 
-  // Predictions
-  getSupplyForecast: (params?: { restaurantId?: string; inventoryItemId?: string; days?: number }) =>
-    fetchAPI<any>(`/predictions/supply-forecast?${new URLSearchParams(params as any)}`),
-  runScenarioSimulation: (data: any) =>
-    fetchAPI<any>("/predictions/scenario-simulator", { method: "POST", body: JSON.stringify(data) }),
+  // Environment
+  getEnvironment: (params?: { restaurantId?: string; days?: number }) =>
+    fetchAPI<any>(`/environment?${new URLSearchParams(params as any)}`),
+  insertEnvironment: (data: any) =>
+    fetchAPI<any>('/environment', { method: 'POST', body: JSON.stringify(data) }),
+  bulkInsertEnvironment: (data: any[]) =>
+    fetchAPI<any>('/environment/bulk', { method: 'POST', body: JSON.stringify(data) }),
 
-  // Aggregators
-  reconcileAggregator: (data: any) =>
-    fetchAPI<any>("/aggregators/reconcile", { method: "POST", body: JSON.stringify(data) }),
-  syncMenu: (data: any) =>
-    fetchAPI<any>("/aggregators/menu-sync", { method: "POST", body: JSON.stringify(data) }),
-  getMenuSyncStatus: (params?: { restaurantId?: string }) =>
-    fetchAPI<any>(`/aggregators/menu-sync?${new URLSearchParams(params as any)}`),
+  // Operational
+  getOperational: (params?: { restaurantId?: string; days?: number }) =>
+    fetchAPI<any>(`/operational?${new URLSearchParams(params as any)}`),
+  insertOperational: (data: any) =>
+    fetchAPI<any>('/operational', { method: 'POST', body: JSON.stringify(data) }),
 
-  // Alerts
-  createAlert: (data: any) =>
-    fetchAPI<any>("/alerts/create", { method: "POST", body: JSON.stringify(data) }),
-  getAlerts: (params?: { restaurantId?: string; type?: string; severity?: string; unreadOnly?: boolean }) =>
-    fetchAPI<any>(`/alerts/list?${new URLSearchParams(params as any)}`),
+  // Table Sessions
+  getTableSessions: (params?: { restaurantId?: string; days?: number; tableNumber?: number }) =>
+    fetchAPI<any>(`/table-sessions?${new URLSearchParams(params as any)}`),
+  insertTableSession: (data: any) =>
+    fetchAPI<any>('/table-sessions', { method: 'POST', body: JSON.stringify(data) }),
 
-  // Reports
-  getDailySummary: (params?: { restaurantId?: string; date?: string; language?: string }) =>
-    fetchAPI<any>(`/reports/daily-summary?${new URLSearchParams(params as any)}`),
-  getGstExport: (params?: { restaurantId?: string; year?: number; month?: number; format?: string }) =>
-    fetchAPI<any>(`/reports/gst-export?${new URLSearchParams(params as any)}`),
+  // Revenue Analytics
+  getRevenueByDay: (params?: { restaurantId?: string; days?: number }) =>
+    fetchAPI<any>(`/revenue?endpoint=by-day&${new URLSearchParams(params as any)}`),
+  getRevenueSummary: (params?: { restaurantId?: string; days?: number }) =>
+    fetchAPI<any>(`/revenue?endpoint=summary&${new URLSearchParams(params as any)}`),
+  getRevenueByHour: (params?: { restaurantId?: string; days?: number }) =>
+    fetchAPI<any>(`/revenue?endpoint=by-hour&${new URLSearchParams(params as any)}`),
 
-  // Scenarios
-  createScenario: (data: any) => fetchAPI("/scenarios", { method: "POST", body: JSON.stringify(data) }),
-  getScenarios: () => fetchAPI<any>("/scenarios"),
+  // Dashboard
+  getDashboard: (params?: { restaurantId?: string }) =>
+    fetchAPI<any>(`/dashboard?${new URLSearchParams(params as any)}`),
+
+  // Experiments
+  getExperiments: (params?: { restaurantId?: string; status?: string }) =>
+    fetchAPI<any>(`/experiments?${new URLSearchParams(params as any)}`),
+  createExperiment: (data: any) =>
+    fetchAPI<any>('/experiments', { method: 'POST', body: JSON.stringify(data) }),
+  updateExperiment: (id: string, data: any) =>
+    fetchAPI<any>(`/experiments/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteExperiment: (id: string) =>
+    fetchAPI<any>(`/experiments/${id}`, { method: 'DELETE' }),
+
+  // Recommendations
+  getRecommendations: (params?: { restaurantId?: string; limit?: number; implemented?: boolean }) =>
+    fetchAPI<any>(`/recommendations?${new URLSearchParams(params as any)}`),
+  createRecommendation: (data: any) =>
+    fetchAPI<any>('/recommendations', { method: 'POST', body: JSON.stringify(data) }),
+  updateRecommendation: (id: string, data: any) =>
+    fetchAPI<any>(`/recommendations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Cameras
+  getCameras: (params: { restaurantId: string }) =>
+    fetchAPI<any>(`/cameras?${new URLSearchParams(params as any)}`),
+  createCamera: (data: {
+    restaurant_id: string
+    name: string
+    rtsp_url: string
+    snapshot_interval_seconds?: number
+    fps?: number
+    table_regions?: CameraTableRegion[]
+    queue_region?: CameraRegion | null
+  }) => fetchAPI<any>('/cameras', { method: 'POST', body: JSON.stringify(data) }),
+  updateCamera: (id: string, data: any) =>
+    fetchAPI<any>(`/cameras/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCamera: (id: string) =>
+    fetchAPI<any>(`/cameras/${id}`, { method: 'DELETE' }),
+
+  // Auth
+  getSession: () => fetchAPI<any>('/auth/session'),
+  signIn: (email: string, password: string) =>
+    fetchAPI<any>('/auth/signin', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  signUp: (email: string, password: string) =>
+    fetchAPI<any>('/auth/signup', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  signOut: () =>
+    fetchAPI<any>('/auth/signout', { method: 'POST' }),
 }

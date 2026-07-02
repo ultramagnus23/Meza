@@ -1,48 +1,50 @@
-"use client"
-
-import { create } from "zustand"
-import { persist } from "zustand/middleware"
-import type { Currency, Decision } from "./types"
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import type { Restaurant, DashboardMetrics } from './types'
 
 interface AppState {
-  currency: Currency
-  setCurrency: (currency: Currency) => void
+  selectedRestaurantId: string | null
+  setSelectedRestaurantId: (id: string | null) => void
 
-  // Decision tracking
-  decisions: Decision[]
-  setDecisions: (decisions: Decision[]) => void
-  updateDecisionStatus: (id: string, status: Decision["status"]) => void
+  selectedRestaurant: Restaurant | null
+  setSelectedRestaurant: (restaurant: Restaurant | null) => void
 
-  // Data refresh
+  metrics: DashboardMetrics | null
+  setMetrics: (metrics: DashboardMetrics | null) => void
+
   lastRefresh: string
   setLastRefresh: (timestamp: string) => void
 
-  // Loading states
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
+
+  theme: 'dark' | 'light'
+  setTheme: (theme: 'dark' | 'light') => void
 }
 
 export const useStore = create<AppState>()(
   persist(
     (set) => ({
-      currency: "INR",
-      setCurrency: (currency) => set({ currency }),
+      selectedRestaurantId: null,
+      setSelectedRestaurantId: (id) => set({ selectedRestaurantId: id }),
 
-      decisions: [],
-      setDecisions: (decisions) => set({ decisions }),
-      updateDecisionStatus: (id, status) =>
-        set((state) => ({
-          decisions: state.decisions.map((d) => (d.id === id ? { ...d, status } : d)),
-        })),
+      selectedRestaurant: null,
+      setSelectedRestaurant: (restaurant) => set({ selectedRestaurant: restaurant }),
+
+      metrics: null,
+      setMetrics: (metrics) => set({ metrics }),
 
       lastRefresh: new Date().toISOString(),
       setLastRefresh: (timestamp) => set({ lastRefresh: timestamp }),
 
       isLoading: false,
       setIsLoading: (loading) => set({ isLoading: loading }),
+
+      theme: 'dark',
+      setTheme: (theme) => set({ theme }),
     }),
     {
-      name: "restaurant-analytics-storage",
+      name: 'experience-intelligence-storage',
     },
   ),
 )

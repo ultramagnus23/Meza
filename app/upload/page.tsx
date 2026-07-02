@@ -1,139 +1,166 @@
-"use client" // <--- 1. THIS IS REQUIRED AT THE TOP
+'use client'
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
+import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/auth-provider'
+import { useStore } from '@/lib/store'
+import { api } from '@/lib/api-client'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { UploadCloud, FileText, CheckCircle2, XCircle } from 'lucide-react'
 
 export default function UploadPage() {
+  const { user } = useAuth()
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { selectedRestaurant } = useStore()
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  async function handleUpload(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setSuccess(false)
-
-    const formData = new FormData(e.currentTarget)
-    const file = formData.get("file") as File
-
-    if (!file) {
-      setError("Please select a file")
-      setLoading(false)
+  useEffect(() => {
+    if (!user) {
+      router.push('/signin')
       return
     }
+    if (!selectedRestaurant) {
+      router.push('/dashboard')
+    }
+  }, [user, selectedRestaurant])
 
+  const handleUpload = async () => {
+    if (!file || !selectedRestaurant) return
+    setUploading(true)
+    setResult(null)
     try {
-      const uploadFormData = new FormData()
-      uploadFormData.append("file", file)
-
-      // 2. CHANGED ENDPOINT: /api/ingest -> /api/upload
-      const res = await fetch("/api/upload", { 
-        method: "POST",
-        body: uploadFormData,
-      })
-
-      const result = await res.json()
-      
-      if (res.ok && result.success) { // logic matches the API response structure I gave you
-        setSuccess(true)
-        // Trigger storage event to notify dashboard
-        window.localStorage.setItem("dataUploaded", Date.now().toString())
-        
-        setError(null)
-        
-        // Redirect to dashboard after 2 seconds
-        setTimeout(() => {
-          router.push("/")
-          router.refresh() // standard Next.js refresh is usually sufficient
-        }, 2000)
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('restaurantId', selectedRestaurant.id)
+      const res = await api.uploadOrders(formData)
+      if (res.success) {
+        setResult({ success: true, message: res.message || `Imported ${res.count} orders` })
+        setFile(null)
+        if (inputRef.current) inputRef.current.value = ''
       } else {
-        setError(result.error || result.message || "Upload failed. Please check your CSV format.")
+        setResult({ success: false, message: res.error || 'Upload failed' })
       }
-    } catch (err) {
-      console.error(err)
-      setError("Network error. Please try again.")
+    } catch (error: any) {
+      setResult({ success: false, message: error.message })
     } finally {
-      setLoading(false)
+      setUploading(false)
     }
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload POS CSV Data</CardTitle>
-          <CardDescription>
-            Upload your POS transaction data in CSV format. The file should include columns:
-            posOrderId, order_time, channel, menu_item, category, quantity, price
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleUpload} className="space-y-4">
-            <div>
-              <label htmlFor="file" className="block text-sm font-medium mb-2">
-                CSV File
-              </label>
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Import POS Data</h1>
+          <p className="text-muted-foreground">
+            Upload a CSV export from your POS for {selectedRestaurant?.name}. Revenue, order and
+            item-level analytics update as soon as import finishes.
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload CSV</CardTitle>
+            <CardDescription>One row per order line item</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <label
+              htmlFor="csv-file"
+              className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-md p-10 cursor-pointer hover:bg-accent/50 transition-colors"
+            >
+              <UploadCloud className="w-8 h-8 text-muted-foreground" />
+              {file ? (
+                <span className="flex items-center gap-2 text-sm">
+                  <FileText className="w-4 h-4" /> {file.name}
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  Click to choose a .csv file, or drag it here
+                </span>
+              )}
               <input
-                id="file"
+                id="csv-file"
+                ref={inputRef}
                 type="file"
-                name="file"
                 accept=".csv"
-                required
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
-            </div>
+            </label>
 
-            {error && (
-              <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-md">
-                <AlertCircle className="h-4 w-4" />
-                <span className="text-sm">{error}</span>
-              </div>
-            )}
+            <Button onClick={handleUpload} disabled={!file || uploading}>
+              {uploading ? 'Uploading...' : 'Import Orders'}
+            </Button>
 
-            {success && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 rounded-md">
-                <CheckCircle2 className="h-4 w-4" />
-                <div className="text-sm">
-                  <div className="font-medium">CSV uploaded successfully!</div>
-                  <div className="text-xs mt-1">Redirecting to dashboard...</div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                disabled={loading || success}
-                className="gap-2"
+            {result && (
+              <div
+                className={`flex items-center gap-2 text-sm p-3 rounded-md ${
+                  result.success
+                    ? 'bg-green-500/10 text-green-400'
+                    : 'bg-destructive/10 text-destructive'
+                }`}
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
+                {result.success ? (
+                  <CheckCircle2 className="w-4 h-4" />
                 ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    Upload
-                  </>
+                  <XCircle className="w-4 h-4" />
                 )}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/")}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                {result.message}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Expected columns</CardTitle>
+            <CardDescription>Header names are flexible — the importer accepts common aliases</CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 pr-4">Field</th>
+                  <th className="text-left py-2">Accepted column names</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/50">
+                  <td className="py-2 pr-4">Order ID</td>
+                  <td className="py-2"><code>posOrderId</code>, <code>order_id</code>, <code>id</code></td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="py-2 pr-4">Order timestamp</td>
+                  <td className="py-2"><code>order_time</code>, <code>order_date</code>, <code>timestamp</code></td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="py-2 pr-4">Menu item</td>
+                  <td className="py-2"><code>menu_item</code>, <code>item</code>, <code>product</code></td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="py-2 pr-4">Quantity / price</td>
+                  <td className="py-2"><code>quantity</code>, <code>price</code></td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="py-2 pr-4">Category</td>
+                  <td className="py-2"><code>category</code> (e.g. containing &quot;dessert&quot;/&quot;drink&quot;/&quot;beverage&quot;)</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4">Optional</td>
+                  <td className="py-2">
+                    <code>order_type</code>, <code>channel</code>, <code>payment_method</code>,{' '}
+                    <code>guest_count</code>, <code>table_number</code>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
