@@ -5,7 +5,12 @@ import { createClient } from '@supabase/supabase-js'
 // evaluate route modules without real credentials (e.g. CI, preview
 // builds); isSupabaseConfigured gates runtime behavior.
 const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const envAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Supabase is transitioning from "anon" keys to "publishable" keys
+// (sb_publishable_...). Both work identically with supabase-js; accept
+// either env var name so dashboard copy-paste of the new naming works.
+const envAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 export const isSupabaseConfigured =
   !!envUrl && /^https?:\/\//.test(envUrl) && !!envAnonKey
