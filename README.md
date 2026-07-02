@@ -27,10 +27,14 @@ This system DOES collect:
 ## Setup
 
 1. Create a Supabase project at https://supabase.com
-2. Run the SQL migration: `supabase/migrations/001_initial_schema.sql`
-3. Copy `.env.local.example` to `.env.local` and add your Supabase credentials
+2. Run the SQL migrations in order: `supabase/migrations/001_initial_schema.sql`, then `supabase/migrations/002_cameras.sql`
+3. Copy `.env.example` to `.env.local` and add your Supabase credentials
 4. Install dependencies: `npm install`
 5. Run development server: `npm run dev`
+
+## Deployment
+
+One-click-ish deploys to **Vercel** (`vercel.json`) or **Render** (`render.yaml` Blueprint) are configured in-repo. Full step-by-step guide, including Supabase setup and post-deploy verification: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Architecture
 

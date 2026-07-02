@@ -1,11 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Real values must be set in the deployment platform (Vercel/Render env
+// vars) or .env.local. The fallbacks below only exist so `next build` can
+// evaluate route modules without real credentials (e.g. CI, preview
+// builds); isSupabaseConfigured gates runtime behavior.
+const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const envAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
-}
+export const isSupabaseConfigured =
+  !!envUrl && /^https?:\/\//.test(envUrl) && !!envAnonKey
+
+const supabaseUrl = isSupabaseConfigured ? (envUrl as string) : 'https://placeholder.supabase.co'
+const supabaseAnonKey = isSupabaseConfigured ? (envAnonKey as string) : 'placeholder-anon-key'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -14,8 +20,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 // single client instance across requests on the server - session state
 // must not leak between concurrent users.
 export function getServerSupabase(req: Request) {
+  if (!isSupabaseConfigured) {
+    throw new Error(
+      'Supabase is not configured: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY'
+    )
+  }
   const authHeader = req.headers.get('authorization') ?? undefined
-  return createClient(supabaseUrl as string, supabaseAnonKey as string, {
+  return createClient(supabaseUrl, supabaseAnonKey, {
     global: authHeader ? { headers: { Authorization: authHeader } } : {},
     auth: { persistSession: false },
   })
