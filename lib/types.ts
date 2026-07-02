@@ -1,176 +1,160 @@
-// Currency types
-export type Currency = "INR" | "USD" | "EUR" | "GBP" | "AUD" | "CAD" | "SGD" | "AED"
-
-export interface CurrencyRate {
-  code: Currency
-  symbol: string
-  rate: number // Rate relative to INR (base currency)
-  name: string
-}
-
-// Menu Item models
-export interface MenuItem {
+export type Restaurant = {
   id: string
+  owner_id: string
   name: string
-  category: "appetizer" | "main" | "dessert" | "beverage"
-  price: number // In INR
-  cost: number // In INR
-  prepTime: number // minutes
-  popularity: number // 0-100
-  orders: number
-  active: boolean
-  createdAt: string
-  updatedAt: string
+  location: string
+  timezone: string
+  max_capacity: number | null
+  created_at: string
+  updated_at: string
 }
 
-export interface MenuEngineering extends MenuItem {
-  engineeringCategory: "Stars" | "Plowhorses" | "Puzzles" | "Dogs"
-  margin: number
-  revenue: number
-  cannibalization: number
-  revenuePerMinute: number
-}
-
-// Order models
-export interface Order {
+export type OccupancySnapshot = {
   id: string
+  restaurant_id: string
   timestamp: string
-  channel: "walk-in" | "booking" | "delivery-direct" | "delivery-zomato" | "delivery-swiggy" | "delivery-doordash"
-  serverId?: string
-  tableId?: string
-  items: OrderItem[]
-  subtotal: number // In INR
-  taxes: number // In INR
-  fees: number // In INR (platform fees for delivery)
-  total: number // In INR
-  status: "pending" | "preparing" | "ready" | "completed" | "cancelled"
-  customerInfo?: {
-    id?: string
-    name?: string
-    phone?: string
-    email?: string
-    isRepeat: boolean
-  }
+  occupancy_percentage: number | null
+  occupied_tables: number | null
+  available_tables: number | null
+  people_count: number | null
+  queue_length: number | null
+  wait_time: number | null
+  total_tables: number | null
 }
 
-export interface OrderItem {
-  menuItemId: string
-  name: string
-  quantity: number
-  price: number // In INR
-  cost: number // In INR
-}
-
-// Server performance models
-export interface Server {
+export type TableSession = {
   id: string
-  name: string
-  active: boolean
-  hireDate: string
+  restaurant_id: string
+  table_number: number
+  party_size: number | null
+  start_time: string
+  end_time: string | null
+  dwell_time: number | null
+  order_value: number | null
+  item_count: number | null
+  dessert_count: number
+  drink_count: number
 }
 
-export interface ServerPerformance extends Server {
-  totalOrders: number
-  totalRevenue: number
-  avgCheckSize: number
-  upsellRate: number
-  avgServiceTime: number
-  effectivenessScore: number
-  shiftsWorked: number
-  hoursWorked: number
-}
-
-// Channel models
-export interface ChannelMetrics {
-  channel: Order["channel"]
-  totalOrders: number
-  totalRevenue: number
-  grossMargin: number
-  platformFees: number
-  netMargin: number
-  netMarginPercent: number
-  avgOrderValue: number
-  customerAcquisitionCost: number
-  repeatRate: number
-  lifetimeValue: number
-  ltvCacRatio: number
-}
-
-// Capacity models
-export interface TimeSlot {
-  hour: number
-  dayPart: "breakfast" | "lunch" | "dinner" | "late-night"
-  orders: number
-  revenue: number
-  capacity: number
-  utilizationPercent: number
-  avgTableTurnover: number
-  revPASH: number
-}
-
-export interface TableMetrics {
-  size: 2 | 4 | 6 | 8
-  count: number
-  totalSeats: number
-  avgUtilization: number
-  avgRevenue: number
-  revenuePerSeat: number
-}
-
-// Decision engine models
-export interface Decision {
+export type EnvironmentSnapshot = {
   id: string
-  action: "Promote" | "Reprice" | "Remove" | "Optimize" | "Redesign"
-  item: string
-  category: "Menu" | "Channel" | "Operations" | "Capacity"
-  priority: "high" | "medium" | "low"
-  impact: {
-    min: number // In INR
-    max: number // In INR
-    confidence: number // 0-100
-  }
-  reason: string
-  risks: string[]
+  restaurant_id: string
+  timestamp: string
+  temperature: number | null
+  humidity: number | null
+  weather: string | null
+  rainfall: boolean
+  music_genre: string | null
+  music_volume: number | null
+  lighting_brightness: number | null
+  lighting_temperature: number | null
+  promotion_active: boolean
+  special_event: string | null
+  staff_count: number | null
+}
+
+export type OperationalSnapshot = {
+  id: string
+  restaurant_id: string
+  timestamp: string
+  staff_count: number | null
+  kitchen_load: number | null
+  service_time: number | null
+  order_prep_time: number | null
+}
+
+export type Experiment = {
+  id: string
+  restaurant_id: string
+  experiment_name: string
+  hypothesis: string
+  variable_changed: string
+  control_condition: string | null
+  test_condition: string | null
+  start_time: string
+  end_time: string | null
+  status: string
+}
+
+export type ExperimentResult = {
+  id: string
+  experiment_id: string
+  revenue_delta: number | null
+  average_order_value_delta: number | null
+  dwell_time_delta: number | null
+  dessert_delta: number | null
+  drink_delta: number | null
+  confidence_score: number | null
+  measured_at: string
+}
+
+export type Recommendation = {
+  id: string
+  restaurant_id: string
+  timestamp: string
   recommendation: string
-  status: "pending" | "implementing" | "completed" | "dismissed"
-  createdAt: string
-  implementedAt?: string
+  confidence: number | null
+  expected_revenue_impact: number | null
+  implemented: boolean
+  implemented_at: string | null
 }
 
-// Scenario simulation models
-export interface Scenario {
+export type PosOrder = {
   id: string
-  name: string
-  description: string
-  changes: ScenarioChange[]
-  projectedImpact: {
-    revenue: { current: number; projected: number; change: number; changePercent: number }
-    margin: { current: number; projected: number; change: number; changePercent: number }
-    orders: { current: number; projected: number; change: number; changePercent: number }
-  }
+  restaurant_id: string
+  external_id: string | null
+  timestamp: string
+  order_type: string
+  channel: string
+  subtotal: number
+  tax: number
+  discount: number
+  total_amount: number
+  payment_method: string | null
+  guest_count: number | null
+  table_number: number | null
+  status: string
+  created_at: string
+}
+
+export type PosOrderItem = {
+  id: string
+  order_id: string
+  item_name: string
+  category: string | null
+  quantity: number
+  price: number
+  total: number
+  is_dessert: boolean
+  is_drink: boolean
+  created_at: string
+}
+
+export type DailyStats = {
+  date: string
+  total_revenue: number
+  total_orders: number
+  avg_order_value: number
+  total_people: number
+  avg_occupancy: number
+  avg_dwell_time: number
+}
+
+export type CorrelationResult = {
+  variable: string
+  correlation: number
+  p_value: number
   confidence: number
-  risks: string[]
-  createdAt: string
+  effect_size: string
 }
 
-export interface ScenarioChange {
-  type: "menu_price" | "menu_remove" | "menu_add" | "channel_mix" | "staffing" | "hours"
-  target: string
-  value: any
-  description: string
-}
-
-// Analytics aggregation models
-export interface Analytics {
-  period: "day" | "week" | "month" | "quarter" | "year"
-  startDate: string
-  endDate: string
-  totalRevenue: number
-  totalOrders: number
-  avgOrderValue: number
-  grossMargin: number
-  netMargin: number
-  topItems: Array<{ itemId: string; name: string; revenue: number; orders: number }>
-  topServers: Array<{ serverId: string; name: string; revenue: number; orders: number }>
-  channelBreakdown: ChannelMetrics[]
+export type DashboardMetrics = {
+  current_occupancy: number
+  today_revenue: number
+  today_orders: number
+  avg_order_value: number
+  avg_dwell_time: number
+  avg_queue_length: number
+  active_experiments: number
+  pending_recommendations: number
 }
