@@ -23,6 +23,8 @@ import {
   LogOut,
   Building2,
   Plus,
+  UploadCloud,
+  Video,
 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -305,6 +307,14 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 md:grid-cols-3">
+              <Button variant="outline" className="justify-start" onClick={() => router.push('/upload')}>
+                <UploadCloud className="w-4 h-4 mr-2" />
+                Import POS Data (CSV)
+              </Button>
+              <Button variant="outline" className="justify-start" onClick={() => router.push('/cameras')}>
+                <Video className="w-4 h-4 mr-2" />
+                Configure Cameras &amp; Tables
+              </Button>
               <Button variant="outline" className="justify-start" onClick={() => router.push('/occupancy')}>
                 <Activity className="w-4 h-4 mr-2" />
                 View Occupancy Analytics

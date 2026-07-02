@@ -12,7 +12,7 @@
 ## MVP LAUNCH
 *Minimum to hand this to one real paying/pilot restaurant.*
 - All BLOCKERS resolved and `npm run build` genuinely green (no `ignoreBuildErrors` masking).
-- CSV-upload UI page wired to the real `pos-orders` POST endpoint (currently backend-only).
+- ~~CSV-upload UI page wired to the real `pos-orders` POST endpoint~~ — done (`/upload`).
 - Password reset flow (Supabase `resetPasswordForEmail` + a reset page).
 - Basic rate limiting on `auth/signup` and `auth/signin`.
 - Error tracking (Sentry) wired into both client and API routes — you cannot safely run a paid product blind.

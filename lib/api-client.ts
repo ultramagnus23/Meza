@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import type { CameraRegion, CameraTableRegion } from './supabase'
 
 export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession()
@@ -96,6 +97,23 @@ export const api = {
     fetchAPI<any>('/recommendations', { method: 'POST', body: JSON.stringify(data) }),
   updateRecommendation: (id: string, data: any) =>
     fetchAPI<any>(`/recommendations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Cameras
+  getCameras: (params: { restaurantId: string }) =>
+    fetchAPI<any>(`/cameras?${new URLSearchParams(params as any)}`),
+  createCamera: (data: {
+    restaurant_id: string
+    name: string
+    rtsp_url: string
+    snapshot_interval_seconds?: number
+    fps?: number
+    table_regions?: CameraTableRegion[]
+    queue_region?: CameraRegion | null
+  }) => fetchAPI<any>('/cameras', { method: 'POST', body: JSON.stringify(data) }),
+  updateCamera: (id: string, data: any) =>
+    fetchAPI<any>(`/cameras/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCamera: (id: string) =>
+    fetchAPI<any>(`/cameras/${id}`, { method: 'DELETE' }),
 
   // Auth
   getSession: () => fetchAPI<any>('/auth/session'),

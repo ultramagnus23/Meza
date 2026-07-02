@@ -21,6 +21,19 @@ export function getServerSupabase(req: Request) {
   })
 }
 
+// A percentage-of-frame ROI box: 0-1 fractions of frame width/height,
+// matching cv_pipeline/occupancy_detector.py's TABLE_REGIONS/QUEUE_REGION format.
+export type CameraRegion = {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+}
+
+export type CameraTableRegion = CameraRegion & {
+  table_number: number
+}
+
 export type Json =
   | string
   | number
@@ -416,6 +429,53 @@ export type Database = {
           is_dessert?: boolean
           is_drink?: boolean
           created_at?: string
+        }
+      }
+      cameras: {
+        Row: {
+          id: string
+          restaurant_id: string
+          name: string
+          rtsp_url: string
+          status: 'active' | 'inactive' | 'error'
+          snapshot_interval_seconds: number
+          fps: number
+          table_regions: CameraTableRegion[]
+          queue_region: CameraRegion | null
+          last_snapshot_at: string | null
+          last_error: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          name: string
+          rtsp_url: string
+          status?: 'active' | 'inactive' | 'error'
+          snapshot_interval_seconds?: number
+          fps?: number
+          table_regions?: CameraTableRegion[]
+          queue_region?: CameraRegion | null
+          last_snapshot_at?: string | null
+          last_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          name?: string
+          rtsp_url?: string
+          status?: 'active' | 'inactive' | 'error'
+          snapshot_interval_seconds?: number
+          fps?: number
+          table_regions?: CameraTableRegion[]
+          queue_region?: CameraRegion | null
+          last_snapshot_at?: string | null
+          last_error?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
     }
