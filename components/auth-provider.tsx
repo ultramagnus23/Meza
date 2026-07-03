@@ -9,7 +9,7 @@ type AuthContextType = {
   user: User | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string) => Promise<{ needsEmailConfirmation: boolean }>
   signOut: () => Promise<void>
 }
 
@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signIn: async () => {},
-  signUp: async () => {},
+  signUp: async () => ({ needsEmailConfirmation: false }),
   signOut: async () => {},
 })
 
@@ -54,8 +54,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        // Send the confirmation link back to this deployment rather than
+        // the Supabase project's default Site URL.
+        emailRedirectTo: `${window.location.origin}/signin`,
+      },
+    })
     if (error) throw error
+    // With "Confirm email" enabled in Supabase, signUp succeeds but returns
+    // no session until the user clicks the emailed link.
+    return { needsEmailConfirmation: !data.session }
   }
 
   const signOut = async () => {

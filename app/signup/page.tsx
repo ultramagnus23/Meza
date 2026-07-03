@@ -15,6 +15,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [confirmationSent, setConfirmationSent] = useState(false)
   const { signUp } = useAuth()
   const router = useRouter()
 
@@ -36,13 +37,41 @@ export default function SignUpPage() {
     }
 
     try {
-      await signUp(email, password)
-      router.push('/dashboard')
+      const { needsEmailConfirmation } = await signUp(email, password)
+      if (needsEmailConfirmation) {
+        setConfirmationSent(true)
+      } else {
+        router.push('/dashboard')
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to sign up')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (confirmationSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Check your email</CardTitle>
+            <CardDescription>
+              We sent a confirmation link to <strong>{email}</strong>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <p>
+              Click the link in that email to activate your account, then sign in. If you
+              don&apos;t see it within a couple of minutes, check your spam folder.
+            </p>
+            <a href="/signin" className="text-primary hover:underline">
+              Go to sign in
+            </a>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
