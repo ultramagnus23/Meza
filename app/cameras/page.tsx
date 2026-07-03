@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Camera as CameraIcon, Plus, Trash2, Video } from 'lucide-react'
+import { toast } from 'sonner'
 
 type Camera = {
   id: string
@@ -57,6 +58,7 @@ export default function CamerasPage() {
       return
     }
     loadCameras()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedRestaurant])
 
   const loadCameras = async () => {
@@ -67,8 +69,9 @@ export default function CamerasPage() {
       if (res.success) {
         setCameras(res.data)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Cameras load error:', error)
+      toast.error('Failed to load cameras', { description: error.message })
     } finally {
       setLoading(false)
     }
@@ -94,7 +97,7 @@ export default function CamerasPage() {
   const handleCreateCamera = async () => {
     if (!selectedRestaurant) return
     if (!form.name || !form.rtsp_url) {
-      alert('Camera name and RTSP URL are required')
+      toast.error('Camera name and RTSP URL are required')
       return
     }
     try {
@@ -113,7 +116,7 @@ export default function CamerasPage() {
       setTrackQueue(false)
       await loadCameras()
     } catch (error: any) {
-      alert(error.message)
+      toast.error(error.message)
     } finally {
       setSaving(false)
     }
@@ -125,7 +128,7 @@ export default function CamerasPage() {
       await api.updateCamera(camera.id, { status: next })
       loadCameras()
     } catch (error: any) {
-      alert(error.message)
+      toast.error(error.message)
     }
   }
 
@@ -135,7 +138,7 @@ export default function CamerasPage() {
       await api.deleteCamera(id)
       loadCameras()
     } catch (error: any) {
-      alert(error.message)
+      toast.error(error.message)
     }
   }
 

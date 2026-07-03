@@ -97,6 +97,8 @@ export const api = {
     fetchAPI<any>('/recommendations', { method: 'POST', body: JSON.stringify(data) }),
   updateRecommendation: (id: string, data: any) =>
     fetchAPI<any>(`/recommendations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  dismissRecommendation: (id: string) =>
+    fetchAPI<any>(`/recommendations/${id}`, { method: 'DELETE' }),
 
   // Cameras
   getCameras: (params: { restaurantId: string }) =>

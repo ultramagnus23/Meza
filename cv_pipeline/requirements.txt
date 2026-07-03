@@ -1,5 +1,9 @@
 # CV Pipeline Dependencies
 # Install on edge device (Raspberry Pi 4 / Jetson Nano)
+#
+# Running with `--simulate` (no camera hardware) only needs `requests` -
+# opencv-python and numpy are for real detection only:
+#   pip install requests
 opencv-python>=4.8.0
 numpy>=1.24.0
 requests>=2.31.0

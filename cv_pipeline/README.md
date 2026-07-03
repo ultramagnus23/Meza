@@ -1,10 +1,37 @@
-# MEZA Occupancy CV Pipeline
+# MEZA Occupancy CV Pipeline (optional hardware add-on)
+
+**This is optional.** MEZA's dashboard, revenue analytics, experiments, and
+recommendations all work without any camera — occupancy can also be logged
+manually or backfilled. This pipeline is the automated way to fill
+`occupancy_snapshots` from real CCTV instead of by hand; skip this whole
+directory if you don't have camera hardware to point at a restaurant yet.
 
 Runs on edge hardware (Raspberry Pi 4 / Jetson Nano) next to a restaurant's
 existing CCTV system. Detects people in an RTSP stream, maps them onto
 configured table/queue regions, and posts anonymous occupancy metadata to
 Supabase. **No image is ever stored or transmitted** — each frame is
 discarded immediately after processing.
+
+## Try it without hardware: `--simulate`
+
+Every install path below requires a real RTSP camera and a downloaded
+detector model. To test the *ingestion path* — the camera registration flow,
+the `cameras` table wiring, the Supabase write, the dashboard reflecting new
+data — without any of that, run:
+
+```bash
+CAMERA_ID=<camera id from /cameras> \
+SUPABASE_URL=https://your-project.supabase.co \
+SUPABASE_SERVICE_KEY=<service role key> \
+python occupancy_detector.py --simulate
+```
+
+`--simulate` skips opening the RTSP stream and loading the detector model
+entirely (opencv-python doesn't even need to be installed for this mode —
+only `requests`). It posts a realistic synthetic snapshot on the configured
+interval, shaped like a real lunch/dinner rush (busier at 12-2pm and
+7-10pm, busier on weekends), through the exact same reporting codepath a
+real camera uses — so it's a genuine test of the pipeline, not a mock of it.
 
 ## Why this is modular per restaurant / per camera
 

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Lightbulb, CheckCircle, TrendingUp } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function RecommendationsPage() {
   const { user } = useAuth()
@@ -27,6 +28,7 @@ export default function RecommendationsPage() {
       return
     }
     loadRecommendations()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedRestaurant])
 
   const loadRecommendations = async () => {
@@ -40,8 +42,9 @@ export default function RecommendationsPage() {
       if (res.success) {
         setRecommendations(res.data)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Recommendations load error:', error)
+      toast.error('Failed to load recommendations', { description: error.message })
     } finally {
       setLoading(false)
     }
@@ -52,16 +55,16 @@ export default function RecommendationsPage() {
       await api.updateRecommendation(id, { implemented: true, implemented_at: new Date().toISOString() })
       loadRecommendations()
     } catch (error: any) {
-      alert(error.message)
+      toast.error(error.message)
     }
   }
 
   const handleDismiss = async (id: string) => {
     try {
-      await api.updateRecommendation(id, { implemented: true, implemented_at: new Date().toISOString() })
+      await api.dismissRecommendation(id)
       loadRecommendations()
     } catch (error: any) {
-      alert(error.message)
+      toast.error(error.message)
     }
   }
 

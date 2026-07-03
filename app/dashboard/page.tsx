@@ -26,6 +26,7 @@ import {
   UploadCloud,
   Video,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function DashboardPage() {
   const { user, signOut } = useAuth()
@@ -43,6 +44,7 @@ export default function DashboardPage() {
       return
     }
     loadDashboard()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedRestaurant])
 
   const loadDashboard = async () => {
@@ -79,8 +81,9 @@ export default function DashboardPage() {
           loadOccupancyChart(occupancyRes.data)
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Dashboard load error:', error)
+      toast.error('Failed to load dashboard data', { description: error.message })
     } finally {
       setLoading(false)
     }

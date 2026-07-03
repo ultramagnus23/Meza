@@ -11,9 +11,10 @@ Three pieces, in this order:
 ## 1. Supabase setup
 
 1. Create a project at https://supabase.com/dashboard (any region close to your customers; free tier is fine to start).
-2. Run the migrations, in order, in the SQL Editor (Dashboard → SQL Editor → New query):
+2. Run the migrations, in order, in the SQL Editor (Dashboard → SQL Editor → New query) — or paste the combined `supabase/setup.sql` in one go:
    - paste and run `supabase/migrations/001_initial_schema.sql`
    - paste and run `supabase/migrations/002_cameras.sql`
+   - paste and run `supabase/migrations/003_demo_mode.sql`
 
    (Alternatively, with the Supabase CLI: `supabase link --project-ref <ref>` then `supabase db push`.)
 3. Auth settings (Dashboard → Authentication):
@@ -61,6 +62,18 @@ Note: Render's free plan spins the service down when idle (cold starts of ~30s).
 4. Dashboard → Quick Actions → **Configure Cameras & Tables** → add a camera (any RTSP URL for now) → note the camera id for edge-device setup.
 
 If signin/signup fails with a 4xx from Supabase, re-check that both env vars are set on the platform *and* that you redeployed after setting them (`NEXT_PUBLIC_*` vars are baked in at build time — changing them requires a rebuild, not just a restart).
+
+## 4. Demo mode (optional but recommended for a public/pilot launch)
+
+To give visitors a "Try Demo" button on `/signin` that signs into a read-only sample restaurant with 60 days of realistic data, without them having to sign up:
+
+1. Locally, set in `.env.local` (never on the deployed platform's public env):
+   - `NEXT_PUBLIC_SUPABASE_URL` (same as above)
+   - `SUPABASE_SERVICE_ROLE_KEY` — Dashboard → Project Settings → API → `service_role` (bypasses RLS; used only by the local seed script, never shipped to a browser)
+   - optionally `DEMO_EMAIL` / `DEMO_PASSWORD` (defaults to `demo@meza.app` / `MezaDemo2026!`)
+2. Run `npm run seed:demo`. This creates (or resets) one demo auth user + one restaurant flagged `is_demo = true`, then generates 60 days of occupancy, environment, and revenue data. Safe to re-run any time to refresh the data.
+3. On Vercel/Render, set `NEXT_PUBLIC_DEMO_EMAIL` and `NEXT_PUBLIC_DEMO_PASSWORD` to the same credentials used in step 1, then redeploy — the "Try Demo" button on `/signin` only renders when both are set.
+4. Migration `003_demo_mode.sql` enforces read-only at the database layer: RLS blocks every insert/update/delete against a restaurant where `is_demo = true`, regardless of which account is signed in, so the demo account can be shared publicly without risk of someone corrupting the sample data via the API directly.
 
 ## Build behavior without env vars
 
