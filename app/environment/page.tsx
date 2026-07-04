@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Thermometer, Droplets, Music, Lightbulb, CloudRain, Users } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function EnvironmentPage() {
   const { user } = useAuth()
@@ -42,6 +43,7 @@ export default function EnvironmentPage() {
       return
     }
     loadEnvironment()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedRestaurant])
 
   const loadEnvironment = async () => {
@@ -55,8 +57,9 @@ export default function EnvironmentPage() {
       if (res.success) {
         setEnvironmentData(res.data)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Environment load error:', error)
+      toast.error('Failed to load environment data', { description: error.message })
     } finally {
       setLoading(false)
     }
@@ -79,7 +82,7 @@ export default function EnvironmentPage() {
         special_event: form.special_event || null,
         staff_count: form.staff_count ? parseInt(form.staff_count) : null,
       })
-      alert('Environment data logged successfully')
+      toast.success('Environment data logged successfully')
       loadEnvironment()
       setForm({
         temperature: '',
@@ -95,7 +98,7 @@ export default function EnvironmentPage() {
         staff_count: '',
       })
     } catch (error: any) {
-      alert(error.message)
+      toast.error(error.message)
     }
   }
 

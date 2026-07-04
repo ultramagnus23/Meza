@@ -18,6 +18,7 @@ import {
   CheckCircle,
   Trash2,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function ExperimentsPage() {
   const { user } = useAuth()
@@ -46,6 +47,7 @@ export default function ExperimentsPage() {
       return
     }
     loadExperiments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedRestaurant])
 
   const loadExperiments = async () => {
@@ -56,8 +58,9 @@ export default function ExperimentsPage() {
       if (res.success) {
         setExperiments(res.data)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Experiments load error:', error)
+      toast.error('Failed to load experiments', { description: error.message })
     } finally {
       setLoading(false)
     }
@@ -82,7 +85,7 @@ export default function ExperimentsPage() {
       })
       loadExperiments()
     } catch (error: any) {
-      alert(error.message)
+      toast.error(error.message)
     }
   }
 
@@ -91,17 +94,17 @@ export default function ExperimentsPage() {
       await api.updateExperiment(id, { status })
       loadExperiments()
     } catch (error: any) {
-      alert(error.message)
+      toast.error(error.message)
     }
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this experiment?')) return
     try {
-      const res = await fetch(`/api/experiments/${id}`, { method: 'DELETE' })
-      if (res.ok) loadExperiments()
-    } catch (error) {
-      alert('Failed to delete')
+      await api.deleteExperiment(id)
+      loadExperiments()
+    } catch (error: any) {
+      toast.error('Failed to delete experiment', { description: error.message })
     }
   }
 

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { OccupancyChart } from '@/components/OccupancyChart'
 import { TrendingUp, Users, Clock, ListOrdered } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function OccupancyPage() {
   const { user } = useAuth()
@@ -30,6 +31,7 @@ export default function OccupancyPage() {
       return
     }
     loadOccupancy()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedRestaurant, selectedDays])
 
   const loadOccupancy = async () => {
@@ -45,8 +47,9 @@ export default function OccupancyPage() {
         setOccupancyData(res.data)
         computeHourlyData(res.data)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Occupancy load error:', error)
+      toast.error('Failed to load occupancy data', { description: error.message })
     } finally {
       setLoading(false)
     }

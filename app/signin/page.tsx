@@ -7,12 +7,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Sparkles } from 'lucide-react'
+
+const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
   const [error, setError] = useState('')
   const { signIn } = useAuth()
   const router = useRouter()
@@ -29,6 +33,20 @@ export default function SignInPage() {
       setError(err.message || 'Failed to sign in')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleTryDemo = async () => {
+    if (!DEMO_EMAIL || !DEMO_PASSWORD) return
+    setDemoLoading(true)
+    setError('')
+    try {
+      await signIn(DEMO_EMAIL, DEMO_PASSWORD)
+      router.push('/dashboard')
+    } catch (err: any) {
+      setError(err.message || 'Demo account is not set up yet - see docs/DEPLOYMENT.md')
+    } finally {
+      setDemoLoading(false)
     }
   }
 
@@ -84,6 +102,33 @@ export default function SignInPage() {
               </a>
             </div>
           </form>
+
+          {DEMO_EMAIL && DEMO_PASSWORD && (
+            <div className="mt-4 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleTryDemo}
+                disabled={demoLoading || loading}
+              >
+                {demoLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading demo...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Try Demo
+                  </>
+                )}
+              </Button>
+              <p className="text-center text-xs text-muted-foreground mt-2">
+                60 days of sample data for a demo restaurant. Read-only - no signup required.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

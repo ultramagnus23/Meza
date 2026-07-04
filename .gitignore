@@ -43,3 +43,6 @@ build/
 
 # Database
 *.db-journal
+
+# local dev tooling (per-machine dev server config)
+.claude/

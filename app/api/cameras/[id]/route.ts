@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getServerSupabase } from '@/lib/supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+async function getRestaurantId(supabase: SupabaseClient, ownerId: string) {
+  const { data } = await supabase
+    .from('restaurants')
+    .select('id')
+    .eq('owner_id', ownerId)
+    .single()
+  return data?.id
+}
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -13,6 +23,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       .from('cameras')
       .select('*')
       .eq('id', params.id)
+      .eq('restaurant_id', (await getRestaurantId(supabase, user.id)))
       .single()
 
     if (error) throw error
@@ -40,6 +51,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       .from('cameras')
       .update({ ...body, updated_at: new Date().toISOString() })
       .eq('id', params.id)
+      .eq('restaurant_id', (await getRestaurantId(supabase, user.id)))
       .select()
       .single()
 
@@ -63,6 +75,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       .from('cameras')
       .delete()
       .eq('id', params.id)
+      .eq('restaurant_id', (await getRestaurantId(supabase, user.id)))
 
     if (error) throw error
 

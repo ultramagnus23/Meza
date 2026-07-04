@@ -26,6 +26,7 @@ export default function UploadPage() {
     if (!selectedRestaurant) {
       router.push('/dashboard')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedRestaurant])
 
   const handleUpload = async () => {

@@ -1,7 +1,12 @@
 """
-CV Pipeline for Anonymous Occupancy Detection
+CV Pipeline for Anonymous Occupancy Detection (OPTIONAL hardware add-on)
 Runs on edge device (Raspberry Pi / Jetson Nano), one process per camera.
 Processes CCTV RTSP stream - outputs metadata only, no image storage.
+
+MEZA works fully without this: occupancy data can also be logged from the
+dashboard forms, and this script has a --simulate mode (below) that posts
+realistic fake occupancy events without any camera, RTSP feed, or detector
+model - useful for demos, dev, and testing the ingestion path end-to-end.
 
 Nothing camera- or restaurant-specific is hardcoded here. All configuration
 (RTSP URL, table ROI regions, queue region, snapshot interval) is fetched
@@ -16,19 +21,23 @@ Required environment variables:
   SUPABASE_SERVICE_KEY  - service role key (edge device only - never ship
                            this to a browser or commit it to source control)
 
-Run:
+Run (real camera, requires opencv-python + downloaded detector model):
   CAMERA_ID=<uuid> SUPABASE_URL=... SUPABASE_SERVICE_KEY=... \
     python occupancy_detector.py
+
+Run (no hardware, no opencv required - posts synthetic snapshots):
+  CAMERA_ID=<uuid> SUPABASE_URL=... SUPABASE_SERVICE_KEY=... \
+    python occupancy_detector.py --simulate
 """
 
+import argparse
 import os
+import random
 import sys
 import time
 import json
 from datetime import datetime
 
-import cv2
-import numpy as np
 import requests
 
 
@@ -74,10 +83,11 @@ def report_camera_status(supabase_url: str, service_key: str, camera_id: str, **
 
 
 class OccupancyDetector:
-    def __init__(self, config: dict, supabase_url: str, supabase_key: str):
+    def __init__(self, config: dict, supabase_url: str, supabase_key: str, simulate: bool = False):
         self.config = config
         self.supabase_url = supabase_url
         self.supabase_key = supabase_key
+        self.simulate = simulate
 
         self.camera_id = config["id"]
         self.restaurant_id = config["restaurant_id"]
@@ -91,11 +101,21 @@ class OccupancyDetector:
                   "occupancy_percentage will always be 0. Configure table "
                   "regions from the MEZA dashboard's Cameras page.")
 
-        self.cap = cv2.VideoCapture(self.rtsp_url)
-        if not self.cap.isOpened():
-            raise ValueError(f"Cannot open RTSP stream: {self.rtsp_url}")
-
-        self.person_detector = self.load_detector()
+        if self.simulate:
+            # No camera, no RTSP connection, no detector model - just posts
+            # realistic synthetic snapshots on the same interval/reporting
+            # codepath a real camera would use.
+            self.cap = None
+            self.person_detector = None
+        else:
+            # Imported lazily so --simulate works on a machine with no
+            # opencv-python installed at all (e.g. a laptop, not the Pi).
+            import cv2
+            self.cv2 = cv2
+            self.cap = cv2.VideoCapture(self.rtsp_url)
+            if not self.cap.isOpened():
+                raise ValueError(f"Cannot open RTSP stream: {self.rtsp_url}")
+            self.person_detector = self.load_detector()
 
     def load_detector(self):
         """Load person detection model (OpenCV DNN, CPU-friendly).
@@ -113,12 +133,14 @@ class OccupancyDetector:
                 "res10_300x300_ssd_iter_140000.caffemodel into cv_pipeline/ "
                 "before running - see cv_pipeline/README.md."
             )
-        return cv2.dnn.readNetFromCaffe(prototxt, weights)
+        return self.cv2.dnn.readNetFromCaffe(prototxt, weights)
 
     def detect_people(self, frame):
         """Detect people in frame using OpenCV DNN"""
-        blob = cv2.dnn.blobFromImage(
-            cv2.resize(frame, (300, 300)),
+        import numpy as np
+
+        blob = self.cv2.dnn.blobFromImage(
+            self.cv2.resize(frame, (300, 300)),
             1.0,
             (300, 300),
             (104.0, 177.0, 123.0)
@@ -139,6 +161,49 @@ class OccupancyDetector:
                 })
 
         return people
+
+    def generate_simulated_snapshot(self):
+        """Fake occupancy shaped like a real lunch/dinner-rush restaurant day,
+        used only in --simulate mode. No camera, no frame, no detector."""
+        now = datetime.now()
+        hour = now.hour + now.minute / 60
+        is_weekend = now.weekday() >= 4  # Fri/Sat/Sun
+
+        if hour >= 12 and hour <= 14:
+            base = 78 if is_weekend else 62
+        elif hour >= 19 and hour <= 22:
+            base = 92 if is_weekend else 74
+        elif 8 <= hour <= 11:
+            base = 18
+        elif 15 <= hour <= 18:
+            base = 30
+        else:
+            base = 25
+
+        occupancy_percentage = max(3, min(100, base + random.uniform(-10, 10)))
+        total_tables = len(self.table_regions) or 12
+        occupied_tables = round((occupancy_percentage / 100) * total_tables)
+        occupied_tables = max(0, min(total_tables, occupied_tables))
+        available_tables = total_tables - occupied_tables
+        people_count = max(0, round(occupied_tables * random.uniform(1.8, 3.2)))
+        queue_length = (
+            random.randint(1, 9) if occupancy_percentage > 85
+            else random.randint(0, 3) if occupancy_percentage > 70
+            else 0
+        )
+        wait_time = queue_length * random.randint(2, 4)
+
+        return {
+            'restaurant_id': self.restaurant_id,
+            'timestamp': now.isoformat(),
+            'occupancy_percentage': round(occupancy_percentage, 2),
+            'occupied_tables': occupied_tables,
+            'available_tables': available_tables,
+            'people_count': people_count,
+            'queue_length': queue_length,
+            'wait_time': wait_time,
+            'total_tables': total_tables,
+        }
 
     def detect_table_occupancy(self, people, frame):
         """Determine which tables are occupied, using this camera's configured regions"""
@@ -178,7 +243,10 @@ class OccupancyDetector:
         )
 
     def capture_snapshot(self):
-        """Capture and process a single frame"""
+        """Capture and process a single frame (or a fake one, in --simulate mode)"""
+        if self.simulate:
+            return self.generate_simulated_snapshot()
+
         ret, frame = self.cap.read()
         if not ret:
             return None
@@ -253,10 +321,12 @@ class OccupancyDetector:
 
     def run(self):
         """Main loop"""
-        print("Starting occupancy detection pipeline...")
+        print("Starting occupancy detection pipeline..."
+              + (" [SIMULATE MODE - no camera, synthetic data]" if self.simulate else ""))
         print(f"Camera: {self.config.get('name', self.camera_id)}")
         print(f"Restaurant: {self.restaurant_id}")
-        print(f"RTSP stream: {self.rtsp_url}")
+        if not self.simulate:
+            print(f"RTSP stream: {self.rtsp_url}")
         print(f"Snapshot interval: {self.snapshot_interval}s")
         print(f"Tracking {len(self.table_regions)} table(s)"
               + (", plus queue region" if self.queue_region else ""))
@@ -284,10 +354,21 @@ class OccupancyDetector:
                 )
                 time.sleep(10)  # Wait before retrying
 
-        self.cap.release()
+        if self.cap is not None:
+            self.cap.release()
 
 
 def main():
+    parser = argparse.ArgumentParser(description="MEZA occupancy CV pipeline")
+    parser.add_argument(
+        "--simulate",
+        action="store_true",
+        help="Post realistic fake occupancy snapshots instead of reading a camera - "
+             "no RTSP stream, opencv, or detector model required. Useful for demos, "
+             "dev, and exercising the ingestion path without a Pi.",
+    )
+    args = parser.parse_args()
+
     camera_id = os.environ.get("CAMERA_ID")
     supabase_url = os.environ.get("SUPABASE_URL")
     supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
@@ -302,7 +383,7 @@ def main():
         sys.exit(1)
 
     config = load_camera_config(supabase_url, supabase_key, camera_id)
-    detector = OccupancyDetector(config, supabase_url, supabase_key)
+    detector = OccupancyDetector(config, supabase_url, supabase_key, simulate=args.simulate)
     detector.run()
 
 
