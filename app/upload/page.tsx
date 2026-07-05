@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { useStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
+import { AppShell } from '@/components/AppShell'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { UploadCloud, FileText, CheckCircle2, XCircle } from 'lucide-react'
@@ -53,16 +54,10 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Import POS Data</h1>
-          <p className="text-muted-foreground">
-            Upload a CSV export from your POS for {selectedRestaurant?.name}. Revenue, order and
-            item-level analytics update as soon as import finishes.
-          </p>
-        </div>
-
+    <AppShell
+      title="Import POS Data"
+      description={`Upload a CSV export from your POS for ${selectedRestaurant?.name ?? 'this restaurant'}. Revenue, order and item-level analytics update as soon as import finishes.`}
+    >
         <Card>
           <CardHeader>
             <CardTitle>Upload CSV</CardTitle>
@@ -101,7 +96,7 @@ export default function UploadPage() {
               <div
                 className={`flex items-center gap-2 text-sm p-3 rounded-md ${
                   result.success
-                    ? 'bg-green-500/10 text-green-400'
+                    ? 'bg-success/10 text-success'
                     : 'bg-destructive/10 text-destructive'
                 }`}
               >
@@ -161,7 +156,6 @@ export default function UploadPage() {
             </table>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </AppShell>
   )
 }

@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { useStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
+import { AppShell } from '@/components/AppShell'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Thermometer, Droplets, Music, Lightbulb, CloudRain, Users } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -102,14 +104,6 @@ export default function EnvironmentPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    )
-  }
-
   const latest = environmentData[0]
   const avgTemp = environmentData.length
     ? (environmentData.reduce((s, d) => s + (d.temperature || 0), 0) / environmentData.filter(d => d.temperature).length).toFixed(1)
@@ -119,15 +113,18 @@ export default function EnvironmentPage() {
     : '--'
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Environmental Analytics</h1>
-          <p className="text-muted-foreground">
-            Track and correlate environmental factors with business outcomes
-          </p>
+    <AppShell
+      title="Environmental Analytics"
+      description="Track and correlate environmental factors with business outcomes"
+    >
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
         </div>
-
+      ) : (
+        <>
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardContent className="pt-6">
@@ -327,7 +324,8 @@ export default function EnvironmentPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+        </>
+      )}
+    </AppShell>
   )
 }

@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { useStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
+import { AppShell } from '@/components/AppShell'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Lightbulb, CheckCircle, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -68,27 +70,22 @@ export default function RecommendationsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    )
-  }
-
   const pending = recommendations.filter((r) => !r.implemented)
   const implemented = recommendations.filter((r) => r.implemented)
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Recommendations</h1>
-          <p className="text-muted-foreground">
-            Data-driven suggestions to optimize your environment and revenue
-          </p>
+    <AppShell
+      title="Recommendations"
+      description="Data-driven suggestions to optimize your environment and revenue"
+    >
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
         </div>
-
+      ) : (
+        <>
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardContent className="pt-6">
@@ -205,7 +202,8 @@ export default function RecommendationsPage() {
             </CardContent>
           </Card>
         )}
-      </div>
-    </div>
+        </>
+      )}
+    </AppShell>
   )
 }

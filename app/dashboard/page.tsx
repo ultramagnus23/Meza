@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { useStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
+import { AppShell } from '@/components/AppShell'
 import { MetricCard } from '@/components/MetricCard'
 import { RevenueChart } from '@/components/RevenueChart'
 import { OccupancyChart } from '@/components/OccupancyChart'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import {
   Users,
@@ -20,21 +21,16 @@ import {
   ListOrdered,
   FlaskConical,
   Lightbulb,
-  LogOut,
-  Building2,
-  Plus,
   UploadCloud,
   Video,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function DashboardPage() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const { selectedRestaurant, setSelectedRestaurant, setMetrics, metrics } = useStore()
-  const [restaurants, setRestaurants] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [showRestaurantPicker, setShowRestaurantPicker] = useState(false)
   const [occupancyData, setOccupancyData] = useState<any[]>([])
   const [revenueData, setRevenueData] = useState<any[]>([])
 
@@ -55,7 +51,6 @@ export default function DashboardPage() {
         const res = await api.getRestaurants()
         if (res.success && res.data.length > 0) {
           setSelectedRestaurant(res.data[0])
-          setRestaurants(res.data)
         } else {
           router.push('/create-restaurant')
           return
@@ -115,74 +110,17 @@ export default function DashboardPage() {
     setOccupancyData(chartData)
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">Experience Intelligence</h1>
-            {selectedRestaurant && (
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">
-                  <Building2 className="w-3 h-3 mr-1" />
-                  {selectedRestaurant.name}
-                </Badge>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowRestaurantPicker(!showRestaurantPicker)}
-                  className="h-6 px-2 text-xs"
-                >
-                  <Plus className="w-3 h-3" />
-                </Button>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={() => signOut()}>
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Restaurant picker dropdown */}
-        {showRestaurantPicker && restaurants.length > 0 && (
-          <div className="px-6 pb-4">
-            <div className="flex gap-2 flex-wrap">
-              {restaurants.map((r) => (
-                <Button
-                  key={r.id}
-                  variant={selectedRestaurant?.id === r.id ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setSelectedRestaurant(r)
-                    setShowRestaurantPicker(false)
-                  }}
-                  className="text-xs"
-                >
-                  {r.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* Main Content */}
-      <main className="p-6 space-y-6">
+    <AppShell title="Dashboard" description={selectedRestaurant ? undefined : 'Loading your restaurant...'}>
         {/* Metric Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {metrics ? (
+          {loading ? (
+            <>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-[104px] rounded-xl" />
+              ))}
+            </>
+          ) : metrics ? (
             <>
               <MetricCard
                 title="Current Occupancy"
@@ -333,7 +271,6 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
-    </div>
+    </AppShell>
   )
 }

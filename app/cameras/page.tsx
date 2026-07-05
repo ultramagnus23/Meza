@@ -6,11 +6,13 @@ import { useAuth } from '@/components/auth-provider'
 import { useStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
 import type { CameraTableRegion, CameraRegion } from '@/lib/supabase'
+import { AppShell } from '@/components/AppShell'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Camera as CameraIcon, Plus, Trash2, Video } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -142,27 +144,15 @@ export default function CamerasPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Cameras &amp; Table Regions</h1>
-          <p className="text-muted-foreground">
-            Register the CCTV cameras for {selectedRestaurant?.name}, and define which part of
-            each camera&apos;s frame corresponds to each table. The edge CV pipeline reads this
-            configuration at startup by <code className="text-xs">CAMERA_ID</code> — nothing is
-            hardcoded per install.
-          </p>
-        </div>
-
+    <AppShell
+      title="Cameras & Table Regions"
+      description={`Register the CCTV cameras for ${selectedRestaurant?.name ?? 'this restaurant'}, and define which part of each camera's frame corresponds to each table.`}
+    >
+      {loading ? (
+        <Skeleton className="h-48 rounded-xl" />
+      ) : (
+        <>
         <Card>
           <CardHeader>
             <CardTitle>Add Camera</CardTitle>
@@ -387,7 +377,8 @@ python cv_pipeline/occupancy_detector.py`}
             </p>
           </CardContent>
         </Card>
-      </div>
-    </div>
+        </>
+      )}
+    </AppShell>
   )
 }
