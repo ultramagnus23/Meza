@@ -8,7 +8,12 @@ export function Card({
   className?: string
 }) {
   return (
-    <div className={cn('rounded-lg border bg-card text-card-foreground shadow-sm', className)}>
+    <div
+      className={cn(
+        'rounded-xl border border-border/60 bg-card text-card-foreground shadow-[0_1px_0_var(--glass-highlight)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)]',
+        className,
+      )}
+    >
       {children}
     </div>
   )

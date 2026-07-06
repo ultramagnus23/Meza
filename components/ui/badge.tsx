@@ -11,9 +11,9 @@ function Badge({
 }) {
   const variants = {
     default: 'bg-primary/10 text-primary border-primary/20',
-    success: 'bg-green-500/10 text-green-400 border-green-500/20',
-    warning: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-    danger: 'bg-red-500/10 text-red-400 border-red-500/20',
+    success: 'bg-success/10 text-success border-success/20',
+    warning: 'bg-warning/10 text-warning border-warning/20',
+    danger: 'bg-danger/10 text-danger border-danger/20',
     outline: 'bg-transparent border-border text-muted-foreground',
   }
 

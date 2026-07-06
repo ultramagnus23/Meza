@@ -1,11 +1,8 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import { Toaster } from "sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import "./globals.css"
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
 // Every page in this app reads client-side auth/session state and talks to
 // Supabase at runtime - none of it is safe to statically prerender and cache
@@ -39,7 +36,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

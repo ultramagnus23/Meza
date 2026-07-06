@@ -14,41 +14,48 @@ import {
 export function OccupancyChart({ data }: { data: { hour: number; label: string; occupancy: number; people: number }[] }) {
   if (data.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center text-muted-foreground">
+      <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
         No occupancy data available
       </div>
     )
   }
 
   const getColor = (occupancy: number) => {
-    if (occupancy >= 80) return 'hsl(0, 70%, 55%)'
-    if (occupancy >= 60) return 'hsl(35, 90%, 55%)'
-    return 'hsl(145, 75%, 55%)'
+    if (occupancy >= 80) return 'var(--danger)'
+    if (occupancy >= 60) return 'var(--warning)'
+    return 'var(--success)'
   }
 
   return (
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis
             dataKey="label"
-            stroke="rgba(255,255,255,0.3)"
+            stroke="var(--muted-foreground)"
             fontSize={12}
+            tickLine={false}
+            axisLine={false}
           />
           <YAxis
-            stroke="rgba(255,255,255,0.3)"
+            stroke="var(--muted-foreground)"
             fontSize={12}
+            tickLine={false}
+            axisLine={false}
             unit="%"
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'rgba(0,0,0,0.8)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px',
+              backgroundColor: 'var(--popover)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              fontSize: 13,
             }}
+            labelStyle={{ color: 'var(--muted-foreground)' }}
+            cursor={{ fill: 'var(--surface-2)' }}
           />
-          <Bar dataKey="occupancy" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="occupancy" radius={[4, 4, 0, 0]} maxBarSize={36}>
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={getColor(entry.occupancy)} />
             ))}

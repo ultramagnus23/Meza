@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { useStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
+import { AppShell } from '@/components/AppShell'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   FlaskConical,
   Plus,
@@ -108,30 +110,25 @@ export default function ExperimentsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Experiments</h1>
-            <p className="text-muted-foreground">
-              Design and track experiments to optimize your environment
-            </p>
-          </div>
-          <Button onClick={() => setShowForm(!showForm)}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Experiment
-          </Button>
+    <AppShell
+      title="Experiments"
+      description="Design and track experiments to optimize your environment"
+      headerActions={
+        <Button onClick={() => setShowForm(!showForm)}>
+          <Plus className="w-4 h-4 mr-2" />
+          New Experiment
+        </Button>
+      }
+    >
+      {loading ? (
+        <div className="grid gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
         </div>
-
+      ) : (
+        <>
         {showForm && (
           <Card>
             <CardHeader>
@@ -290,7 +287,8 @@ export default function ExperimentsPage() {
             </CardContent>
           </Card>
         )}
-      </div>
-    </div>
+        </>
+      )}
+    </AppShell>
   )
 }

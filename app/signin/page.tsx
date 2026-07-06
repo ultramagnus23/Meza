@@ -9,6 +9,17 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, Sparkles } from 'lucide-react'
 
+function BrandMark() {
+  return (
+    <div className="flex items-center justify-center gap-2 mb-6">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        <Sparkles className="h-4 w-4" />
+      </div>
+      <span className="text-lg font-semibold">MEZA</span>
+    </div>
+  )
+}
+
 const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL
 const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD
 
@@ -52,7 +63,9 @@ export default function SignInPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+      <div className="w-full max-w-md">
+      <BrandMark />
+      <Card className="bg-surface-1">
         <CardHeader>
           <CardTitle>Sign In</CardTitle>
           <CardDescription>Enter your credentials to access the platform</CardDescription>
@@ -131,6 +144,7 @@ export default function SignInPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

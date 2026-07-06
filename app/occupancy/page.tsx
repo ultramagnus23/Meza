@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { useStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
+import { AppShell } from '@/components/AppShell'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import { OccupancyChart } from '@/components/OccupancyChart'
 import { TrendingUp, Users, Clock, ListOrdered } from 'lucide-react'
 import { toast } from 'sonner'
@@ -84,14 +86,6 @@ export default function OccupancyPage() {
     setHourlyData(chartData)
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    )
-  }
-
   const avgOccupancy = occupancyData.length
     ? Math.round(occupancyData.reduce((s, d) => s + (d.occupancy_percentage || 0), 0) / occupancyData.length)
     : 0
@@ -103,29 +97,29 @@ export default function OccupancyPage() {
     : 0
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Occupancy Analytics</h1>
-            <p className="text-muted-foreground">
-              Real-time and historical occupancy data from your location
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {[1, 7, 30].map((days) => (
-              <Button
-                key={days}
-                variant={selectedDays === days ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedDays(days)}
-              >
-                {days === 1 ? 'Today' : `${days}d`}
-              </Button>
-            ))}
-          </div>
+    <AppShell
+      title="Occupancy Analytics"
+      description="Real-time and historical occupancy data from your location"
+      headerActions={
+        <SegmentedControl
+          value={selectedDays}
+          onChange={setSelectedDays}
+          options={[
+            { value: 1, label: 'Today' },
+            { value: 7, label: '7d' },
+            { value: 30, label: '30d' },
+          ]}
+        />
+      }
+    >
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
         </div>
-
+      ) : (
+        <>
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardContent className="pt-6">
@@ -221,7 +215,8 @@ export default function OccupancyPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+        </>
+      )}
+    </AppShell>
   )
 }

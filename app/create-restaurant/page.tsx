@@ -8,7 +8,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Sparkles } from 'lucide-react'
+
+function BrandMark() {
+  return (
+    <div className="flex items-center justify-center gap-2 mb-6">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        <Sparkles className="h-4 w-4" />
+      </div>
+      <span className="text-lg font-semibold">MEZA</span>
+    </div>
+  )
+}
 
 export default function CreateRestaurantPage() {
   const [name, setName] = useState('')
@@ -44,7 +55,9 @@ export default function CreateRestaurantPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+      <div className="w-full max-w-md">
+      <BrandMark />
+      <Card className="bg-surface-1">
         <CardHeader>
           <CardTitle>Create Your First Location</CardTitle>
           <CardDescription>Set up your first venue to start tracking experience data</CardDescription>
@@ -89,6 +102,7 @@ export default function CreateRestaurantPage() {
           </form>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }
