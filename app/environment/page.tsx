@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Thermometer, Droplets, Music, Lightbulb, CloudRain, Users } from 'lucide-react'
+import { StatLedger } from '@/components/StatLedger'
+import { Music, Lightbulb, CloudRain } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function EnvironmentPage() {
@@ -114,52 +115,20 @@ export default function EnvironmentPage() {
 
   return (
     <AppShell
-      title="Environmental Analytics"
+      title="Environment"
       description="Track and correlate environmental factors with business outcomes"
     >
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-xl" />
-          ))}
-        </div>
+        <Skeleton className="h-24 w-full" />
       ) : (
         <>
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Thermometer className="w-5 h-5 text-red-400" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Avg Temperature</p>
-                  <p className="text-2xl font-bold">{avgTemp}°C</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Droplets className="w-5 h-5 text-blue-400" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Avg Humidity</p>
-                  <p className="text-2xl font-bold">{avgHumidity}%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Latest Staff Count</p>
-                  <p className="text-2xl font-bold">{latest?.staff_count || '--'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <StatLedger
+          stats={[
+            { label: 'Avg temperature', value: `${avgTemp}°C` },
+            { label: 'Avg humidity', value: `${avgHumidity}%` },
+            { label: 'Latest staff count', value: latest?.staff_count || '--' },
+          ]}
+        />
 
         <Card>
           <CardHeader>

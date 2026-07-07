@@ -6,25 +6,29 @@ import { useAuth } from '@/components/auth-provider'
 import { useStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
 import { AppShell } from '@/components/AppShell'
-import { MetricCard } from '@/components/MetricCard'
+import { StatLedger } from '@/components/StatLedger'
 import { RevenueChart } from '@/components/RevenueChart'
 import { OccupancyChart } from '@/components/OccupancyChart'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Button } from '@/components/ui/button'
 import {
-  Users,
-  TrendingUp,
-  DollarSign,
-  Clock,
   Activity,
-  ListOrdered,
-  FlaskConical,
-  Lightbulb,
+  TrendingUp,
   UploadCloud,
   Video,
+  FlaskConical,
+  CloudSun,
+  Lightbulb,
 } from 'lucide-react'
 import { toast } from 'sonner'
+
+const QUICK_ACTIONS = [
+  { href: '/upload', label: 'Import POS data', icon: UploadCloud },
+  { href: '/cameras', label: 'Set up cameras and tables', icon: Video },
+  { href: '/occupancy', label: 'View occupancy analytics', icon: Activity },
+  { href: '/environment', label: 'Log environment data', icon: CloudSun },
+  { href: '/experiments', label: 'Start an experiment', icon: FlaskConical },
+]
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -112,165 +116,102 @@ export default function DashboardPage() {
 
   return (
     <AppShell title="Dashboard" description={selectedRestaurant ? undefined : 'Loading your restaurant...'}>
-        {/* Metric Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {loading ? (
-            <>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-[104px] rounded-xl" />
-              ))}
-            </>
-          ) : metrics ? (
-            <>
-              <MetricCard
-                title="Current Occupancy"
-                value={`${metrics.current_occupancy}%`}
-                subtitle={`${metrics.today_orders} orders today`}
-                icon={Users}
-                color="primary"
-              />
-              <MetricCard
-                title="Today's Revenue"
-                value={`₹${metrics.today_revenue.toLocaleString()}`}
-                subtitle={`${metrics.avg_order_value} avg order`}
-                icon={DollarSign}
-                color="success"
-              />
-              <MetricCard
-                title="Avg Dwell Time"
-                value={`${metrics.avg_dwell_time} min`}
-                subtitle="Per table session"
-                icon={Clock}
-                color="accent"
-              />
-              <MetricCard
-                title="Avg Queue Length"
-                value={metrics.avg_queue_length.toString()}
-                subtitle="Current wait"
-                icon={ListOrdered}
-                color={metrics.avg_queue_length > 5 ? 'danger' : 'warning'}
-              />
-            </>
-          ) : (
-            <>
-              <MetricCard title="Current Occupancy" value="--" icon={Users} />
-              <MetricCard title="Today's Revenue" value="₹0" icon={DollarSign} />
-              <MetricCard title="Avg Dwell Time" value="--" icon={Clock} />
-              <MetricCard title="Avg Queue Length" value="0" icon={ListOrdered} />
-            </>
-          )}
-        </div>
+      {loading ? (
+        <Skeleton className="h-24 w-full" />
+      ) : (
+        <StatLedger
+          stats={[
+            {
+              label: 'Current occupancy',
+              value: metrics ? `${metrics.current_occupancy}%` : '--',
+              meta: metrics ? `${metrics.today_orders} orders today` : undefined,
+              tone: 'candle',
+            },
+            {
+              label: "Today's revenue",
+              value: metrics ? `₹${metrics.today_revenue.toLocaleString()}` : '₹0',
+              meta: metrics ? `${metrics.avg_order_value} avg order` : undefined,
+              tone: 'success',
+            },
+            {
+              label: 'Avg dwell time',
+              value: metrics ? `${metrics.avg_dwell_time} min` : '--',
+              meta: 'Per table session',
+            },
+            {
+              label: 'Avg queue length',
+              value: metrics ? metrics.avg_queue_length.toString() : '0',
+              meta: 'Current wait',
+              tone: metrics && metrics.avg_queue_length > 5 ? 'danger' : 'default',
+            },
+          ]}
+        />
+      )}
 
-        {/* Charts Row */}
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary" />
-                Hourly Occupancy
-              </CardTitle>
-              <CardDescription>Average occupancy by hour of day</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <OccupancyChart data={occupancyData} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-success" />
-                Revenue Trend
-              </CardTitle>
-              <CardDescription>Daily revenue over last 30 days</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RevenueChart data={revenueData} />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Activity Summary */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FlaskConical className="w-5 h-5 text-accent" />
-                Active Experiments
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{metrics?.active_experiments || 0}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Running experiments to optimize experience
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="w-5 h-5 text-warning" />
-                Recommendations
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{metrics?.pending_recommendations || 0}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Actionable insights waiting for your response
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-success" />
-                Revenue Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">
-                ₹{metrics?.today_revenue.toLocaleString() || 0}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Today&apos;s total revenue
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Actions */}
+      {/* Charts Row */}
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common tasks to get started</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-muted-foreground" />
+              Hourly occupancy
+            </CardTitle>
+            <CardDescription>Average occupancy by hour of day</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-3">
-              <Button variant="outline" className="justify-start" onClick={() => router.push('/upload')}>
-                <UploadCloud className="w-4 h-4 mr-2" />
-                Import POS Data (CSV)
-              </Button>
-              <Button variant="outline" className="justify-start" onClick={() => router.push('/cameras')}>
-                <Video className="w-4 h-4 mr-2" />
-                Configure Cameras &amp; Tables
-              </Button>
-              <Button variant="outline" className="justify-start" onClick={() => router.push('/occupancy')}>
-                <Activity className="w-4 h-4 mr-2" />
-                View Occupancy Analytics
-              </Button>
-              <Button variant="outline" className="justify-start" onClick={() => router.push('/environment')}>
-                <FlaskConical className="w-4 h-4 mr-2" />
-                Log Environment Data
-              </Button>
-              <Button variant="outline" className="justify-start" onClick={() => router.push('/experiments')}>
-                <Lightbulb className="w-4 h-4 mr-2" />
-                Create Experiment
-              </Button>
-            </div>
+            <OccupancyChart data={occupancyData} />
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              Revenue trend
+            </CardTitle>
+            <CardDescription>Daily revenue over last 30 days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RevenueChart data={revenueData} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tonight's summary */}
+      <div>
+        <h2 className="text-sm font-medium text-muted-foreground mb-2">Tonight</h2>
+        <div className="border-y border-border divide-y divide-border">
+          <div className="flex items-center justify-between gap-3 px-3 py-3 text-sm">
+            <span className="flex items-center gap-2">
+              <FlaskConical className="w-4 h-4 text-muted-foreground" /> Active experiments
+            </span>
+            <span className="font-mono tabular-nums">{metrics?.active_experiments ?? 0}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3 px-3 py-3 text-sm">
+            <span className="flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-muted-foreground" /> Recommendations waiting
+            </span>
+            <span className="font-mono tabular-nums">{metrics?.pending_recommendations ?? 0}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <div>
+        <h2 className="text-sm font-medium text-muted-foreground mb-2">Get started</h2>
+        <div className="border-y border-border divide-y divide-border">
+          {QUICK_ACTIONS.map((action) => (
+            <button
+              key={action.href}
+              onClick={() => router.push(action.href)}
+              className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-accent transition-colors"
+            >
+              <action.icon className="w-4 h-4 text-muted-foreground shrink-0" />
+              {action.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </AppShell>
   )
 }

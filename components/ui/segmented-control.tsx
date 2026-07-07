@@ -14,7 +14,7 @@ export function SegmentedControl<T extends string | number>({
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-full border border-border/60 bg-black/15 p-0.5',
+        'inline-flex items-center gap-0.5 rounded-full border border-border bg-muted p-0.5',
         className,
       )}
     >
@@ -27,7 +27,7 @@ export function SegmentedControl<T extends string | number>({
             className={cn(
               'rounded-full px-3 py-1 text-xs font-medium transition-colors duration-150',
               active
-                ? 'bg-surface-3 text-foreground shadow-[0_1px_0_var(--glass-highlight)_inset,0_1px_2px_rgba(0,0,0,0.3)]'
+                ? 'bg-surface-3 text-foreground'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >

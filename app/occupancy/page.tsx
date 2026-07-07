@@ -7,11 +7,11 @@ import { useStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
 import { AppShell } from '@/components/AppShell'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { OccupancyChart } from '@/components/OccupancyChart'
-import { TrendingUp, Users, Clock, ListOrdered } from 'lucide-react'
+import { StatLedger } from '@/components/StatLedger'
+import { TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function OccupancyPage() {
@@ -98,7 +98,7 @@ export default function OccupancyPage() {
 
   return (
     <AppShell
-      title="Occupancy Analytics"
+      title="Occupancy"
       description="Real-time and historical occupancy data from your location"
       headerActions={
         <SegmentedControl
@@ -113,54 +113,22 @@ export default function OccupancyPage() {
       }
     >
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-xl" />
-          ))}
-        </div>
+        <Skeleton className="h-24 w-full" />
       ) : (
         <>
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Avg Occupancy</p>
-                  <p className="text-2xl font-bold">{avgOccupancy}%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-accent" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Avg People Count</p>
-                  <p className="text-2xl font-bold">{avgPeople}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <ListOrdered className="w-5 h-5 text-warning" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Avg Queue Length</p>
-                  <p className="text-2xl font-bold">{avgQueue}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <StatLedger
+          stats={[
+            { label: 'Avg occupancy', value: `${avgOccupancy}%`, tone: 'candle' },
+            { label: 'Avg people count', value: avgPeople },
+            { label: 'Avg queue length', value: avgQueue },
+          ]}
+        />
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              Hourly Occupancy Pattern
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              Hourly occupancy pattern
             </CardTitle>
             <CardDescription>
               Average occupancy percentage by hour of day
@@ -171,50 +139,40 @@ export default function OccupancyPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Snapshots</CardTitle>
-            <CardDescription>Last {Math.min(10, occupancyData.length)} occupancy readings</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-3 text-muted-foreground">Time</th>
-                    <th className="text-left py-2 px-3 text-muted-foreground">Occupancy</th>
-                    <th className="text-left py-2 px-3 text-muted-foreground">People</th>
-                    <th className="text-left py-2 px-3 text-muted-foreground">Queue</th>
-                    <th className="text-left py-2 px-3 text-muted-foreground">Wait Time</th>
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground mb-2">
+            Recent snapshots · last {Math.min(10, occupancyData.length)} readings
+          </h2>
+          <div className="border-y border-border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th className="py-2 px-3 font-medium">Time</th>
+                  <th className="py-2 px-3 font-medium">Occupancy</th>
+                  <th className="py-2 px-3 font-medium">People</th>
+                  <th className="py-2 px-3 font-medium">Queue</th>
+                  <th className="py-2 px-3 font-medium">Wait time</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono tabular-nums">
+                {occupancyData.slice(0, 10).map((snap) => (
+                  <tr key={snap.id} className="border-b border-border last:border-b-0">
+                    <td className="py-2 px-3">
+                      {new Date(snap.timestamp).toLocaleString('en-IN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </td>
+                    <td className="py-2 px-3">{snap.occupancy_percentage}%</td>
+                    <td className="py-2 px-3">{snap.people_count}</td>
+                    <td className="py-2 px-3">{snap.queue_length}</td>
+                    <td className="py-2 px-3">{snap.wait_time} min</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {occupancyData.slice(0, 10).map((snap) => (
-                    <tr key={snap.id} className="border-b border-border/50">
-                      <td className="py-2 px-3">
-                        {new Date(snap.timestamp).toLocaleString('en-IN', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td className="py-2 px-3">
-                        <Badge variant={
-                          (snap.occupancy_percentage || 0) > 80 ? 'danger' :
-                          (snap.occupancy_percentage || 0) > 60 ? 'warning' : 'success'
-                        }>
-                          {snap.occupancy_percentage}%
-                        </Badge>
-                      </td>
-                      <td className="py-2 px-3">{snap.people_count}</td>
-                      <td className="py-2 px-3">{snap.queue_length}</td>
-                      <td className="py-2 px-3">{snap.wait_time} min</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
         </>
       )}
     </AppShell>

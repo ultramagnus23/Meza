@@ -2,116 +2,157 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================
+   THE SERVICE FLOOR - design tokens
+   ============================================
+   Light = daytime analysis at a desk. Dark = a manager glancing at a screen
+   in a dim dining room during service (the default app mode). Both are
+   warm - every neutral carries a faint tint toward hue ~55-70 (umber/amber),
+   never true chroma-0 gray, never pure #000/#fff.
+
+   Existing shadcn-style variable names (--background, --primary, etc.) are
+   kept so every component in components/ui/* keeps working unmodified -
+   only the values change. The poetic names from the design brief (room,
+   panel, plaster, candle, sage, ember, line) are aliased below for new
+   scene-specific work (e.g. inline SVG fills) that reads more clearly under
+   its own name than "background"/"primary". */
+
 :root {
-  /* Warm graphite base (macOS-style dark vibrancy, not cold blue-black) -
-     every neutral carries a faint warm tint toward the copper brand hue (45)
-     instead of true chroma-0 gray. */
-  --background: oklch(0.14 0.006 55);
-  --foreground: oklch(0.97 0.004 55);
-  --card: oklch(0.18 0.007 55);
-  --card-foreground: oklch(0.97 0.004 55);
-  --popover: oklch(0.2 0.008 55);
-  --popover-foreground: oklch(0.97 0.004 55);
-  --primary: oklch(0.72 0.16 45);
-  --primary-foreground: oklch(0.14 0.01 45);
-  --secondary: oklch(0.25 0.007 55);
-  --secondary-foreground: oklch(0.97 0.004 55);
-  --muted: oklch(0.25 0.007 55);
-  --muted-foreground: oklch(0.66 0.012 55);
-  --accent: oklch(0.68 0.15 290);
-  --accent-foreground: oklch(0.97 0.004 55);
-  --destructive: oklch(0.62 0.21 25);
-  --destructive-foreground: oklch(0.97 0.004 55);
-  --success: oklch(0.72 0.16 150);
-  --success-foreground: oklch(0.14 0.01 150);
-  --warning: oklch(0.8 0.15 95);
-  --warning-foreground: oklch(0.14 0.01 95);
-  --danger: oklch(0.62 0.21 25);
-  --danger-foreground: oklch(0.97 0.004 55);
-  --border: oklch(0.28 0.008 55);
-  --input: oklch(0.28 0.008 55);
-  --ring: oklch(0.72 0.16 45);
-  --chart-1: oklch(0.72 0.16 45);
-  --chart-2: oklch(0.66 0.17 320);
-  --chart-3: oklch(0.65 0.15 290);
-  --chart-4: oklch(0.7 0.14 155);
-  --chart-5: oklch(0.62 0.19 18);
-  --radius: 0.85rem;
-  /* Elevation: each surface step reads slightly lighter than --background so
-     stacked cards (card on top of a card, e.g. metric card inside a shell)
-     read as physically layered instead of flat bordered boxes. */
-  --surface-1: oklch(0.18 0.007 55);
-  --surface-2: oklch(0.21 0.008 55);
-  --surface-3: oklch(0.25 0.008 55);
-  /* macOS vibrancy: sidebar/menu-bar materials are translucent over the
-     desktop wallpaper, not solid fills - these stay low-alpha and are always
-     paired with backdrop-blur + backdrop-saturate utilities. */
-  --sidebar: oklch(0.16 0.008 55 / 0.72);
-  --sidebar-foreground: oklch(0.95 0.004 55);
-  --sidebar-primary: oklch(0.72 0.16 45);
-  --sidebar-primary-foreground: oklch(0.14 0.01 45);
-  --sidebar-accent: oklch(0.97 0.004 55 / 0.08);
-  --sidebar-accent-foreground: oklch(0.97 0.004 55);
-  --sidebar-border: oklch(0.97 0.004 55 / 0.08);
-  --sidebar-ring: oklch(0.72 0.16 45);
-  --glass-highlight: oklch(0.97 0.004 55 / 0.09);
-  --traffic-red: oklch(0.63 0.21 25);
-  --traffic-yellow: oklch(0.83 0.15 95);
-  --traffic-green: oklch(0.72 0.16 150);
+  /* room */
+  --background: oklch(0.96 0.006 60);
+  /* plaster */
+  --foreground: oklch(0.25 0.02 50);
+  /* panel */
+  --card: oklch(0.99 0.003 70);
+  --card-foreground: oklch(0.25 0.02 50);
+  --popover: oklch(0.995 0.003 70);
+  --popover-foreground: oklch(0.25 0.02 50);
+  /* candle - the single accent. Reserved for occupied tables, live
+     indicators, primary CTAs. Never used for hover/neutral chrome. */
+  --primary: oklch(0.72 0.13 65);
+  --primary-foreground: oklch(0.22 0.02 50);
+  --secondary: oklch(0.93 0.008 60);
+  --secondary-foreground: oklch(0.25 0.02 50);
+  --muted: oklch(0.92 0.008 60);
+  --muted-foreground: oklch(0.46 0.016 55);
+  /* neutral hover/selection tint - deliberately NOT candle, so candle's
+     <=10%-of-viewport budget isn't blown by every hover state. */
+  --accent: oklch(0.9 0.01 60);
+  --accent-foreground: oklch(0.25 0.02 50);
+  /* ember - alert only (camera offline, over-capacity). If this shows up
+     when nothing is wrong, that's a bug, not a style choice. */
+  --destructive: oklch(0.48 0.16 30);
+  --destructive-foreground: oklch(0.98 0.005 60);
+  --danger: oklch(0.48 0.16 30);
+  --danger-foreground: oklch(0.98 0.005 60);
+  /* sage - "table turning well / free" */
+  --success: oklch(0.53 0.08 148);
+  --success-foreground: oklch(0.98 0.006 148);
+  --warning: oklch(0.58 0.14 55);
+  --warning-foreground: oklch(0.98 0.005 60);
+  /* line - hairlines. Warm, low-alpha, never flat black/white. */
+  --border: oklch(0.3 0.02 60 / 0.14);
+  --input: oklch(0.3 0.02 60 / 0.18);
+  --ring: oklch(0.72 0.13 65);
+  /* charts: candle for tonight, plaster @ 40% for comparison periods - see
+     RevenueChart/OccupancyChart/CorrelationScatter. chart-3..5 exist only
+     for components that need a 3rd/4th series and stay neutral, never a
+     new hue. */
+  --chart-1: oklch(0.72 0.13 65);
+  --chart-2: oklch(0.25 0.02 50 / 0.4);
+  --chart-3: oklch(0.46 0.016 55 / 0.55);
+  --chart-4: oklch(0.53 0.08 148 / 0.6);
+  --chart-5: oklch(0.3 0.02 60 / 0.3);
+  --radius: 0.6rem;
+  --surface-1: oklch(0.99 0.003 70);
+  --surface-2: oklch(0.975 0.004 65);
+  --surface-3: oklch(0.955 0.006 62);
+  /* rail - the edge sidebar. Solid, not translucent: no vibrancy/blur. */
+  --sidebar: oklch(0.945 0.007 60);
+  --sidebar-foreground: oklch(0.25 0.02 50);
+  --sidebar-primary: oklch(0.72 0.13 65);
+  --sidebar-primary-foreground: oklch(0.22 0.02 50);
+  --sidebar-accent: oklch(0.9 0.01 60);
+  --sidebar-accent-foreground: oklch(0.25 0.02 50);
+  --sidebar-border: oklch(0.3 0.02 60 / 0.14);
+  --sidebar-ring: oklch(0.72 0.13 65);
+
+  /* Poetic aliases - same values, names that read naturally in floor-plan
+     and landing-page markup (e.g. fill="var(--candle)" in inline SVG). */
+  --room: var(--background);
+  --panel: var(--card);
+  --plaster: var(--foreground);
+  --candle: var(--primary);
+  --sage: var(--success);
+  --ember: var(--destructive);
+  --line: var(--border);
+  /* long-stayer dimming: a table held past its expected turn dims from
+     candle toward umber, per the floor-plan scene's brief. */
+  --candle-dim: oklch(0.55 0.06 58);
 }
 
 .dark {
-  --background: oklch(0.14 0.006 55);
-  --foreground: oklch(0.97 0.004 55);
-  --card: oklch(0.18 0.007 55);
-  --card-foreground: oklch(0.97 0.004 55);
-  --popover: oklch(0.2 0.008 55);
-  --popover-foreground: oklch(0.97 0.004 55);
-  --primary: oklch(0.72 0.16 45);
-  --primary-foreground: oklch(0.14 0.01 45);
-  --secondary: oklch(0.25 0.007 55);
-  --secondary-foreground: oklch(0.97 0.004 55);
-  --muted: oklch(0.25 0.007 55);
-  --muted-foreground: oklch(0.66 0.012 55);
-  --accent: oklch(0.68 0.15 290);
-  --accent-foreground: oklch(0.97 0.004 55);
-  --destructive: oklch(0.62 0.21 25);
-  --destructive-foreground: oklch(0.97 0.004 55);
-  --success: oklch(0.72 0.16 150);
-  --success-foreground: oklch(0.14 0.01 150);
-  --warning: oklch(0.8 0.15 95);
-  --warning-foreground: oklch(0.14 0.01 95);
-  --danger: oklch(0.62 0.21 25);
-  --danger-foreground: oklch(0.97 0.004 55);
-  --border: oklch(0.28 0.008 55);
-  --input: oklch(0.28 0.008 55);
-  --ring: oklch(0.72 0.16 45);
-  --chart-1: oklch(0.72 0.16 45);
-  --chart-2: oklch(0.66 0.17 320);
-  --chart-3: oklch(0.65 0.15 290);
-  --chart-4: oklch(0.7 0.14 155);
-  --chart-5: oklch(0.62 0.19 18);
-  --surface-1: oklch(0.18 0.007 55);
-  --surface-2: oklch(0.21 0.008 55);
-  --surface-3: oklch(0.25 0.008 55);
-  --sidebar: oklch(0.16 0.008 55 / 0.72);
-  --sidebar-foreground: oklch(0.95 0.004 55);
-  --sidebar-primary: oklch(0.72 0.16 45);
-  --sidebar-primary-foreground: oklch(0.14 0.01 45);
-  --sidebar-accent: oklch(0.97 0.004 55 / 0.08);
-  --sidebar-accent-foreground: oklch(0.97 0.004 55);
-  --sidebar-border: oklch(0.97 0.004 55 / 0.08);
-  --sidebar-ring: oklch(0.72 0.16 45);
-  --glass-highlight: oklch(0.97 0.004 55 / 0.09);
-  --traffic-red: oklch(0.63 0.21 25);
-  --traffic-yellow: oklch(0.83 0.15 95);
-  --traffic-green: oklch(0.72 0.16 150);
+  /* room - warm charcoal, not black */
+  --background: oklch(0.19 0.012 50);
+  /* plaster */
+  --foreground: oklch(0.92 0.01 70);
+  /* panel - one step lighter than room */
+  --card: oklch(0.24 0.014 50);
+  --card-foreground: oklch(0.92 0.01 70);
+  --popover: oklch(0.26 0.014 50);
+  --popover-foreground: oklch(0.92 0.01 70);
+  /* candle - slightly brighter in dark, per brief */
+  --primary: oklch(0.76 0.14 65);
+  --primary-foreground: oklch(0.18 0.02 50);
+  --secondary: oklch(0.28 0.014 50);
+  --secondary-foreground: oklch(0.92 0.01 70);
+  --muted: oklch(0.28 0.014 50);
+  --muted-foreground: oklch(0.66 0.015 60);
+  --accent: oklch(0.3 0.014 55);
+  --accent-foreground: oklch(0.92 0.01 70);
+  --destructive: oklch(0.62 0.18 25);
+  --destructive-foreground: oklch(0.97 0.006 60);
+  --danger: oklch(0.62 0.18 25);
+  --danger-foreground: oklch(0.97 0.006 60);
+  --success: oklch(0.68 0.09 148);
+  --success-foreground: oklch(0.17 0.02 148);
+  --warning: oklch(0.7 0.13 58);
+  --warning-foreground: oklch(0.18 0.02 55);
+  --border: oklch(0.88 0.02 60 / 0.1);
+  --input: oklch(0.88 0.02 60 / 0.14);
+  --ring: oklch(0.76 0.14 65);
+  --chart-1: oklch(0.76 0.14 65);
+  --chart-2: oklch(0.92 0.01 70 / 0.4);
+  --chart-3: oklch(0.66 0.015 60 / 0.55);
+  --chart-4: oklch(0.68 0.09 148 / 0.6);
+  --chart-5: oklch(0.88 0.02 60 / 0.25);
+  --surface-1: oklch(0.24 0.014 50);
+  --surface-2: oklch(0.27 0.014 50);
+  --surface-3: oklch(0.3 0.014 50);
+  /* rail - slightly darker than room, reads as a physical edge, still solid */
+  --sidebar: oklch(0.165 0.012 50);
+  --sidebar-foreground: oklch(0.92 0.01 70);
+  --sidebar-primary: oklch(0.76 0.14 65);
+  --sidebar-primary-foreground: oklch(0.18 0.02 50);
+  --sidebar-accent: oklch(0.28 0.014 55);
+  --sidebar-accent-foreground: oklch(0.92 0.01 70);
+  --sidebar-border: oklch(0.88 0.02 60 / 0.1);
+  --sidebar-ring: oklch(0.76 0.14 65);
+
+  --room: var(--background);
+  --panel: var(--card);
+  --plaster: var(--foreground);
+  --candle: var(--primary);
+  --sage: var(--success);
+  --ember: var(--destructive);
+  --line: var(--border);
+  --candle-dim: oklch(0.5 0.06 58);
 }
 
 @theme inline {
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  --font-sans: var(--font-instrument-sans), "Instrument Sans", system-ui, sans-serif;
+  --font-display: var(--font-archivo), "Archivo", system-ui, sans-serif;
+  --font-mono: var(--font-spline-mono), "Spline Sans Mono", ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -157,6 +198,13 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-room: var(--room);
+  --color-panel: var(--panel);
+  --color-plaster: var(--plaster);
+  --color-candle: var(--candle);
+  --color-sage: var(--sage);
+  --color-ember: var(--ember);
+  --color-line: var(--line);
 }
 
 @layer base {
@@ -164,22 +212,24 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+  /* Visible focus rings everywhere - the operator drives this with a
+     keyboard or a shared front-desk device as often as a mouse. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
 @layer base {
-  /* Ambient wallpaper behind the whole app - soft, low-saturation glows so
-     the glass sidebar/header (backdrop-blur) have something with depth and
-     color variation to reveal, the way macOS vibrancy picks up the desktop
-     wallpaper behind Finder/Control Center. A flat solid background would
-     make backdrop-blur invisible. Fixed so it doesn't scroll with content. */
+  /* Flat room color, no ambient wallpaper/glow, no glass materials -
+     "calm, spatial, legible at a glance across a room," not a vibrancy
+     effect layered over a decorative backdrop. */
   body {
-    background-image:
-      radial-gradient(ellipse 900px 600px at 8% -10%, oklch(0.72 0.16 45 / 0.16), transparent 60%),
-      radial-gradient(ellipse 800px 700px at 100% 10%, oklch(0.68 0.15 290 / 0.12), transparent 60%),
-      radial-gradient(ellipse 900px 800px at 20% 120%, oklch(0.7 0.14 155 / 0.08), transparent 60%);
-    background-attachment: fixed;
     background-color: var(--background);
   }
 }

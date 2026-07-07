@@ -6,11 +6,10 @@ import { useAuth } from '@/components/auth-provider'
 import { useStore } from '@/lib/store'
 import { api } from '@/lib/api-client'
 import { AppShell } from '@/components/AppShell'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Lightbulb, CheckCircle, TrendingUp } from 'lucide-react'
+import { StatLedger } from '@/components/StatLedger'
+import { Lightbulb, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function RecommendationsPage() {
@@ -79,128 +78,78 @@ export default function RecommendationsPage() {
       description="Data-driven suggestions to optimize your environment and revenue"
     >
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-xl" />
-          ))}
-        </div>
+        <Skeleton className="h-24 w-full" />
       ) : (
         <>
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Lightbulb className="w-5 h-5 text-warning" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Recommendations</p>
-                  <p className="text-2xl font-bold">{recommendations.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold">{pending.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-success" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Implemented</p>
-                  <p className="text-2xl font-bold">{implemented.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <StatLedger
+          stats={[
+            { label: 'Total', value: recommendations.length },
+            { label: 'Pending', value: pending.length, tone: 'candle' },
+            { label: 'Implemented', value: implemented.length, tone: 'success' },
+          ]}
+        />
 
         {pending.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Pending</h2>
-            {pending.map((rec) => (
-              <Card key={rec.id}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <p className="font-medium">{rec.recommendation}</p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        {rec.confidence && (
-                          <span>Confidence: {rec.confidence}%</span>
-                        )}
-                        {rec.expected_revenue_impact && (
-                          <span className="text-success">
-                            Expected impact: ₹{rec.expected_revenue_impact.toLocaleString()}
-                          </span>
-                        )}
-                        <span>
-                          {new Date(rec.timestamp).toLocaleDateString('en-IN')}
+          <div>
+            <h2 className="text-sm font-medium text-muted-foreground mb-2">Pending</h2>
+            <div className="border-y border-border divide-y divide-border">
+              {pending.map((rec) => (
+                <div key={rec.id} className="flex items-start justify-between gap-4 px-1 py-4">
+                  <div className="space-y-1.5 min-w-0">
+                    <p className="text-sm">{rec.recommendation}</p>
+                    <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-muted-foreground">
+                      {rec.confidence && <span>confidence {rec.confidence}%</span>}
+                      {rec.expected_revenue_impact && (
+                        <span className="text-success">
+                          impact ₹{rec.expected_revenue_impact.toLocaleString()}
                         </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDismiss(rec.id)}
-                      >
-                        Dismiss
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleImplement(rec.id)}
-                      >
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Implement
-                      </Button>
+                      )}
+                      <span>{new Date(rec.timestamp).toLocaleDateString('en-IN')}</span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => handleDismiss(rec.id)}>
+                      Dismiss
+                    </Button>
+                    <Button size="sm" onClick={() => handleImplement(rec.id)}>
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Implement
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {implemented.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Implemented</h2>
-            {implemented.slice(0, 10).map((rec) => (
-              <Card key={rec.id}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-success" />
-                        <p className="font-medium">{rec.recommendation}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Implemented on {new Date(rec.implemented_at!).toLocaleDateString('en-IN')}
-                      </p>
-                    </div>
-                    <Badge variant="success">Done</Badge>
+          <div>
+            <h2 className="text-sm font-medium text-muted-foreground mb-2">Implemented</h2>
+            <div className="border-y border-border divide-y divide-border">
+              {implemented.slice(0, 10).map((rec) => (
+                <div key={rec.id} className="flex items-start justify-between gap-4 px-1 py-3">
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="text-sm flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-success shrink-0" />
+                      {rec.recommendation}
+                    </p>
+                    <p className="text-xs font-mono text-muted-foreground pl-5">
+                      done {new Date(rec.implemented_at!).toLocaleDateString('en-IN')}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {recommendations.length === 0 && (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Lightbulb className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">
-                No recommendations yet. Recommendations will appear once we have enough data to analyze.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="border-y border-border py-12 text-center">
+            <Lightbulb className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              No recommendations yet. They will appear once we have enough data to analyze.
+            </p>
+          </div>
         )}
         </>
       )}

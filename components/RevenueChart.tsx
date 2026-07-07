@@ -1,8 +1,8 @@
 "use client"
 
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -22,13 +22,7 @@ export function RevenueChart({ data }: { data: { date: string; revenue: number }
   return (
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
+        <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis
             dataKey="date"
@@ -62,15 +56,15 @@ export function RevenueChart({ data }: { data: { date: string; revenue: number }
               return d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })
             }}
           />
-          <Area
+          <Line
             type="monotone"
             dataKey="revenue"
-            stroke="var(--primary)"
+            stroke="var(--candle)"
             strokeWidth={2}
-            fill="url(#revenueFill)"
+            dot={false}
             activeDot={{ r: 4 }}
           />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
     </div>
   )

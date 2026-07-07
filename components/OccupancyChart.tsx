@@ -8,7 +8,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Cell,
 } from "recharts"
 
 export function OccupancyChart({ data }: { data: { hour: number; label: string; occupancy: number; people: number }[] }) {
@@ -18,12 +17,6 @@ export function OccupancyChart({ data }: { data: { hour: number; label: string; 
         No occupancy data available
       </div>
     )
-  }
-
-  const getColor = (occupancy: number) => {
-    if (occupancy >= 80) return 'var(--danger)'
-    if (occupancy >= 60) return 'var(--warning)'
-    return 'var(--success)'
   }
 
   return (
@@ -53,13 +46,9 @@ export function OccupancyChart({ data }: { data: { hour: number; label: string; 
               fontSize: 13,
             }}
             labelStyle={{ color: 'var(--muted-foreground)' }}
-            cursor={{ fill: 'var(--surface-2)' }}
+            cursor={{ fill: 'var(--muted)' }}
           />
-          <Bar dataKey="occupancy" radius={[4, 4, 0, 0]} maxBarSize={36}>
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={getColor(entry.occupancy)} />
-            ))}
-          </Bar>
+          <Bar dataKey="occupancy" radius={[2, 2, 0, 0]} maxBarSize={36} fill="var(--candle)" />
         </BarChart>
       </ResponsiveContainer>
     </div>

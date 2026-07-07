@@ -337,7 +337,15 @@ export default function CamerasPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={camera.status === 'active' ? 'default' : 'outline'}>
+                      <Badge
+                        variant={
+                          camera.status === 'error'
+                            ? 'danger'
+                            : camera.status === 'active'
+                              ? 'default'
+                              : 'outline'
+                        }
+                      >
                         {camera.status}
                       </Badge>
                       <Button size="sm" variant="outline" onClick={() => toggleStatus(camera)}>
