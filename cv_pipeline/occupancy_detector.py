@@ -118,46 +118,51 @@ class OccupancyDetector:
             self.person_detector = self.load_detector()
 
     def load_detector(self):
-        """Load person detection model (OpenCV DNN, CPU-friendly).
+        """Load person detection model: YOLOv8n (Ultralytics), CPU-friendly.
 
-        Requires deploy.prototxt + res10_300x300_ssd_iter_140000.caffemodel
-        in this directory - download separately, not bundled in-repo. See
-        cv_pipeline README for the download step.
+        Replaces the previous generic Caffe SSD face/person detector (see
+        docs/ML_AUDIT.md for why) with a real, actively-maintained
+        person-detection model. Still generic/pretrained on COCO, not
+        fine-tuned on restaurant CCTV footage - see EVALUATION.md before
+        trusting its numbers operationally.
+
+        Looks for yolov8n.pt in this directory first (recommended for
+        offline/edge installs - see README for the one-time download step).
+        If not present, falls back to ultralytics' own auto-download, which
+        requires internet access on first run.
         """
-        model_dir = os.path.dirname(os.path.abspath(__file__))
-        prototxt = os.path.join(model_dir, "deploy.prototxt")
-        weights = os.path.join(model_dir, "res10_300x300_ssd_iter_140000.caffemodel")
-        if not (os.path.exists(prototxt) and os.path.exists(weights)):
+        try:
+            from ultralytics import YOLO
+        except ImportError as e:
             raise ConfigError(
-                "Missing detector model files. Download deploy.prototxt and "
-                "res10_300x300_ssd_iter_140000.caffemodel into cv_pipeline/ "
-                "before running - see cv_pipeline/README.md."
-            )
-        return self.cv2.dnn.readNetFromCaffe(prototxt, weights)
+                "ultralytics is not installed. Run: pip install ultralytics "
+                "(see cv_pipeline/requirements.txt)."
+            ) from e
+
+        model_dir = os.path.dirname(os.path.abspath(__file__))
+        local_weights = os.path.join(model_dir, "yolov8n.pt")
+        model_source = local_weights if os.path.exists(local_weights) else "yolov8n.pt"
+        try:
+            return YOLO(model_source)
+        except Exception as e:
+            raise ConfigError(
+                f"Failed to load YOLOv8 model ({model_source}): {e}. For an "
+                "offline/edge install, download yolov8n.pt once (see "
+                "cv_pipeline/README.md) and place it in this directory."
+            ) from e
 
     def detect_people(self, frame):
-        """Detect people in frame using OpenCV DNN"""
-        import numpy as np
-
-        blob = self.cv2.dnn.blobFromImage(
-            self.cv2.resize(frame, (300, 300)),
-            1.0,
-            (300, 300),
-            (104.0, 177.0, 123.0)
-        )
-        self.person_detector.setInput(blob)
-        detections = self.person_detector.forward()
+        """Detect people in frame using YOLOv8 (COCO class 0 = person)."""
+        results = self.person_detector.predict(frame, classes=[0], conf=0.5, verbose=False)
 
         people = []
-        for i in range(detections.shape[2]):
-            confidence = detections[0, 0, i, 2]
-            if confidence > 0.5:  # Confidence threshold
-                box = detections[0, 0, i, 3:7] * np.array(frame.shape[1::-1])
-                x1, y1, x2, y2 = box.astype(int)
+        for result in results:
+            for box in result.boxes:
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
                 people.append({
-                    'x': (x1 + x2) // 2,
-                    'y': (y1 + y2) // 2,
-                    'confidence': float(confidence)
+                    'x': (x1 + x2) / 2,
+                    'y': (y1 + y2) / 2,
+                    'confidence': float(box.conf[0]),
                 })
 
         return people

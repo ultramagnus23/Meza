@@ -49,12 +49,16 @@ layout, edit the regions on the dashboard and restart the process.
 
 1. Register the camera and its table regions in the MEZA dashboard
    (`/cameras`) — note the camera's id shown there.
-2. Download the person-detector model files into this directory (not
-   bundled in the repo):
-   - `deploy.prototxt`
-   - `res10_300x300_ssd_iter_140000.caffemodel`
-   (Available from any standard OpenCV face/person SSD model mirror.)
-3. Install dependencies: `pip install -r requirements.txt`
+2. Install dependencies: `pip install -r requirements.txt`
+3. Get the YOLOv8n detector weights (`yolov8n.pt`), not bundled in the
+   repo:
+   - **Offline/edge install (recommended):** download once from a machine
+     with internet access - `python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"` -
+     then copy the resulting `yolov8n.pt` into this directory.
+   - **Online install:** skip this step - `occupancy_detector.py` falls
+     back to `ultralytics`' own auto-download on first run if
+     `yolov8n.pt` isn't found locally (requires internet access on that
+     first run only).
 
 ## Running
 
@@ -79,9 +83,19 @@ configuration to manage centrally beyond issuing/rotating the service key.
 
 ## Accuracy note
 
-The bundled detector is a generic pretrained face/person SSD model, not
-fine-tuned for restaurant CCTV angles. Validate occupancy accuracy against
-a pilot site before relying on these numbers operationally — see
+The bundled detector is YOLOv8n (Ultralytics), a real, actively-maintained
+person-detection model - but still generic and pretrained on COCO, not
+fine-tuned for restaurant CCTV angles. **No accuracy number for this
+pipeline is claimed anywhere in this repo** - validate it against a pilot
+site's labeled footage before relying on these numbers operationally. See
+`EVALUATION.md` in this directory for how to run that validation, and
 `docs/ML_AUDIT.md` in the main repo for the full assessment and
 recommended next steps (fine-tuning, evaluation harness) before wider
 rollout.
+
+## Deployment
+
+See the `Dockerfile` in this directory to containerize this pipeline, and
+`meza-occupancy-detector@.service` for a systemd template unit example for
+a non-containerized install directly on a Pi. Both run one process per
+camera (`CAMERA_ID` selects which).

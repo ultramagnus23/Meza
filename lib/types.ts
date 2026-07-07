@@ -51,6 +51,12 @@ export type EnvironmentSnapshot = {
   promotion_active: boolean
   special_event: string | null
   staff_count: number | null
+  co2_ppm: number | null
+  pm25_ugm3: number | null
+  outdoor_aqi: number | null
+  lux: number | null
+  sound_level_db: number | null
+  source: 'manual' | 'sensor' | 'weather_api'
 }
 
 export type OperationalSnapshot = {
@@ -93,6 +99,7 @@ export type Recommendation = {
   restaurant_id: string
   timestamp: string
   recommendation: string
+  rule_key: string | null
   confidence: number | null
   expected_revenue_impact: number | null
   implemented: boolean

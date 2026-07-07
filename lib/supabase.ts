@@ -37,6 +37,21 @@ export function getServerSupabase(req: Request) {
   })
 }
 
+// Privileged server-only client for trusted backend jobs that have no
+// restaurant-owner session to forward (e.g. the recommendation engine cron
+// route). Bypasses RLS by design - never expose SUPABASE_SERVICE_ROLE_KEY
+// to the browser, and never call this from a route that handles a
+// user-supplied restaurant_id without itself checking authorization first.
+export function getServiceSupabase() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!isSupabaseConfigured || !serviceKey) {
+    throw new Error(
+      'Service Supabase client is not configured: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY'
+    )
+  }
+  return createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+}
+
 // A percentage-of-frame ROI box: 0-1 fractions of frame width/height,
 // matching cv_pipeline/occupancy_detector.py's TABLE_REGIONS/QUEUE_REGION format.
 export type CameraRegion = {
@@ -188,6 +203,12 @@ export type Database = {
           promotion_active: boolean
           special_event: string | null
           staff_count: number | null
+          co2_ppm: number | null
+          pm25_ugm3: number | null
+          outdoor_aqi: number | null
+          lux: number | null
+          sound_level_db: number | null
+          source: 'manual' | 'sensor' | 'weather_api'
         }
         Insert: {
           id?: string
@@ -204,6 +225,12 @@ export type Database = {
           promotion_active?: boolean
           special_event?: string | null
           staff_count?: number | null
+          co2_ppm?: number | null
+          pm25_ugm3?: number | null
+          outdoor_aqi?: number | null
+          lux?: number | null
+          sound_level_db?: number | null
+          source?: 'manual' | 'sensor' | 'weather_api'
         }
         Update: {
           id?: string
@@ -220,6 +247,12 @@ export type Database = {
           promotion_active?: boolean
           special_event?: string | null
           staff_count?: number | null
+          co2_ppm?: number | null
+          pm25_ugm3?: number | null
+          outdoor_aqi?: number | null
+          lux?: number | null
+          sound_level_db?: number | null
+          source?: 'manual' | 'sensor' | 'weather_api'
         }
       }
       operational_snapshots: {
@@ -330,6 +363,7 @@ export type Database = {
           restaurant_id: string
           timestamp: string
           recommendation: string
+          rule_key: string | null
           confidence: number | null
           expected_revenue_impact: number | null
           implemented: boolean
@@ -340,6 +374,7 @@ export type Database = {
           restaurant_id: string
           timestamp?: string
           recommendation: string
+          rule_key?: string | null
           confidence?: number | null
           expected_revenue_impact?: number | null
           implemented?: boolean
@@ -350,6 +385,7 @@ export type Database = {
           restaurant_id?: string
           timestamp?: string
           recommendation?: string
+          rule_key?: string | null
           confidence?: number | null
           expected_revenue_impact?: number | null
           implemented?: boolean

@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getServerSupabase } from '@/lib/supabase'
 
+const VALID_SOURCES = ['manual', 'sensor', 'weather_api'] as const
+
+const NUMERIC_FIELDS = [
+  'temperature', 'humidity', 'music_volume', 'lighting_brightness', 'lighting_temperature',
+  'co2_ppm', 'pm25_ugm3', 'outdoor_aqi', 'lux', 'sound_level_db',
+] as const
+
 export async function GET(req: Request) {
   try {
     const supabase = getServerSupabase(req)
@@ -48,6 +55,19 @@ export async function POST(req: Request) {
 
     if (!restaurant_id) {
       return NextResponse.json({ error: 'restaurant_id required' }, { status: 400 })
+    }
+
+    if (data.source !== undefined && !VALID_SOURCES.includes(data.source)) {
+      return NextResponse.json(
+        { error: `source must be one of: ${VALID_SOURCES.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    for (const field of NUMERIC_FIELDS) {
+      if (data[field] !== undefined && data[field] !== null && typeof data[field] !== 'number') {
+        return NextResponse.json({ error: `${field} must be a number` }, { status: 400 })
+      }
     }
 
     const { error } = await supabase

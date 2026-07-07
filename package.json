@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed:demo": "node scripts/seed-demo.mjs"
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "seed:experiment-templates": "node scripts/seed-experiment-templates.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
