@@ -9,14 +9,14 @@ function Button({
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
   size?: 'default' | 'sm' | 'lg' | 'icon'
 }) {
-  const base = 'inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100'
+  const base = 'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100'
 
   const variants = {
-    default: 'bg-primary text-primary-foreground shadow-[0_1px_0_var(--glass-highlight)_inset,0_1px_2px_rgba(0,0,0,0.4)] hover:brightness-110',
-    destructive: 'bg-destructive text-destructive-foreground shadow-[0_1px_2px_rgba(0,0,0,0.4)] hover:brightness-110',
-    outline: 'border border-border bg-white/[0.03] hover:bg-accent/15 hover:text-accent-foreground',
+    default: 'bg-primary text-primary-foreground hover:brightness-110',
+    destructive: 'bg-destructive text-destructive-foreground hover:brightness-110',
+    outline: 'border border-border bg-transparent hover:bg-accent hover:text-accent-foreground',
     secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-    ghost: 'hover:bg-white/[0.06]',
+    ghost: 'hover:bg-accent hover:text-accent-foreground',
     link: 'text-primary underline-offset-4 hover:underline rounded-none',
   }
 
