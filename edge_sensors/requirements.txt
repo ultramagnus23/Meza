@@ -1,19 +1,9 @@
 # Edge Sensor Dependencies
-# Install on edge device (Raspberry Pi)
 #
-# Running with `--mock` (collector.py) or weather_fetch.py alone only
-# needs `requests` - the hardware libraries below are for wiring up real
-# sensors in collector.py's adapter classes:
-#   pip install requests
+# weather_fetch.py is the only active script here (see README.md) and
+# needs only requests.
 requests>=2.31.0
 
-# Optional: for real sensor adapters in collector.py (uncomment as you
-# wire up each sensor - see README.md for wiring notes)
-# smbus2>=0.4.3                        # I2C bus access (SCD30/SCD41, BH1750)
-# pyserial>=3.5                        # UART access (PMS5003)
-# adafruit-circuitpython-sht31d>=2.3.0 # SHT31 temp/humidity
-# adafruit-circuitpython-dht>=4.0.0    # DHT22 temp/humidity (alternative to SHT31)
-# adafruit-circuitpython-scd30>=2.2.0  # SCD30 CO2
-# sensirion-i2c-scd4x>=0.3.0           # SCD41 CO2 (alternative to SCD30)
-# sounddevice>=0.4.6                   # I2S MEMS mic capture for sound_level_db
-# numpy>=1.24.0                        # dB(A) calculation from mic samples
+# legacy/collector.py's hardware-adapter dependencies (smbus2, pyserial,
+# adafruit-circuitpython-*, sounddevice, numpy) are no longer listed here -
+# that script is parked, not maintained. See legacy/collector.py's header.

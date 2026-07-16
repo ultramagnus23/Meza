@@ -1,4 +1,18 @@
 """
+PARKED (2026-07-14): superseded by the phone-based sensing pivot - see
+PIVOT_AUDIT.md at the repo root. This script assumed dedicated per-venue
+I2C/UART sensor hardware (SHT31, SCD30, PMS5003, BH1750, an I2S mic) wired
+to a Raspberry Pi at each site. That assumption is dead: sound and light
+are now captured by a phone's on-device web page (Phase 2 of the pivot),
+and temperature/humidity/CO2/PM2.5 have no phone-sensing equivalent, so
+they move to the `interventions` log as owner-reported changes instead of
+continuous sensor readings. Every adapter class below still raised
+NotImplementedError for its real hardware path (only --mock ever worked),
+so nothing operational is being removed - kept here for reference. Do not
+wire this back up; build the phone capture page instead.
+
+Original docstring follows, unmodified:
+---
 Edge Sensor Collector for Atmospherics (OPTIONAL hardware add-on)
 Runs on edge device (Raspberry Pi), one process per restaurant site,
 alongside (not instead of) cv_pipeline/occupancy_detector.py if that's

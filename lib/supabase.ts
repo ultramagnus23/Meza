@@ -65,6 +65,12 @@ export type CameraTableRegion = CameraRegion & {
   table_number: number
 }
 
+// A fractional (0-1), camera-frame-relative polygon point for zones.polygon.
+export type ZonePoint = {
+  x: number
+  y: number
+}
+
 export type Json =
   | string
   | number
@@ -159,6 +165,8 @@ export type Database = {
           item_count: number | null
           dessert_count: number
           drink_count: number
+          pass_time: string | null
+          clearance_pct: number | null
         }
         Insert: {
           id?: string
@@ -172,6 +180,9 @@ export type Database = {
           item_count?: number | null
           dessert_count?: number
           drink_count?: number
+          pass_time?: string | null
+          // 0-100, bussing-staff estimate; checked at the DB layer (008_pass_to_table.sql)
+          clearance_pct?: number | null
         }
         Update: {
           id?: string
@@ -185,6 +196,8 @@ export type Database = {
           item_count?: number | null
           dessert_count?: number
           drink_count?: number
+          pass_time?: string | null
+          clearance_pct?: number | null
         }
       }
       environment_snapshots: {
@@ -296,6 +309,15 @@ export type Database = {
           start_time: string
           end_time: string | null
           status: string
+          randomization_unit: 'session' | 'day' | 'table' | 'dish'
+          primary_metric: string
+          primary_metric_locked_at: string | null
+          secondary_metrics: string[]
+          min_detectable_effect: number | null
+          created_at: string
+          // Links to interventions() rows that constitute this experiment's
+          // treatment - see 009_pivot_data_model.sql.
+          linked_intervention_ids: string[]
         }
         Insert: {
           id?: string
@@ -308,6 +330,15 @@ export type Database = {
           start_time: string
           end_time?: string | null
           status?: string
+          randomization_unit: 'session' | 'day' | 'table' | 'dish'
+          primary_metric: string
+          primary_metric_locked_at?: string | null
+          // Must include 'return_rate' - enforced by
+          // experiments_secondary_metrics_return_rate_check (007_experiment_lab.sql).
+          secondary_metrics: string[]
+          min_detectable_effect?: number | null
+          created_at?: string
+          linked_intervention_ids?: string[]
         }
         Update: {
           id?: string
@@ -320,6 +351,116 @@ export type Database = {
           start_time?: string
           end_time?: string | null
           status?: string
+          randomization_unit?: 'session' | 'day' | 'table' | 'dish'
+          // primary_metric is rejected by fn_lock_primary_metric() once
+          // status is not 'planned' - see 007_experiment_lab.sql section F.
+          primary_metric?: string
+          primary_metric_locked_at?: string | null
+          secondary_metrics?: string[]
+          min_detectable_effect?: number | null
+          created_at?: string
+          linked_intervention_ids?: string[]
+        }
+      }
+      experiment_treatments: {
+        Row: {
+          id: string
+          experiment_id: string
+          label: string
+          is_control: boolean
+          config: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          experiment_id: string
+          label: string
+          is_control?: boolean
+          // config.hold_temp_c, when present, is validated by
+          // fn_check_thermal_danger_zone() - must be <=4 or >=60.
+          config?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          experiment_id?: string
+          label?: string
+          is_control?: boolean
+          config?: Json
+          created_at?: string
+        }
+      }
+      experiment_assignments: {
+        Row: {
+          id: string
+          experiment_id: string
+          treatment_id: string
+          unit_key: string
+          assigned_for: string
+          compliance_confirmed: boolean
+          compliance_note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          experiment_id: string
+          treatment_id: string
+          // Shape must match the parent experiment's randomization_unit
+          // (validated by fn_check_assignment_unit()): ISO date for 'day',
+          // numeric table number for 'table', non-empty text for 'dish'/'session'.
+          unit_key: string
+          assigned_for?: string
+          compliance_confirmed?: boolean
+          compliance_note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          experiment_id?: string
+          treatment_id?: string
+          unit_key?: string
+          assigned_for?: string
+          compliance_confirmed?: boolean
+          compliance_note?: string | null
+          created_at?: string
+        }
+      }
+      thermal_readings: {
+        Row: {
+          id: string
+          restaurant_id: string
+          experiment_id: string | null
+          table_number: number | null
+          dish_name: string | null
+          stage: 'at_pass' | 'at_table'
+          temp_c: number
+          recorded_at: string
+          source: 'ir_manual' | 'ir_sensor'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          experiment_id?: string | null
+          table_number?: number | null
+          dish_name?: string | null
+          stage: 'at_pass' | 'at_table'
+          temp_c: number
+          recorded_at?: string
+          source?: 'ir_manual' | 'ir_sensor'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          experiment_id?: string | null
+          table_number?: number | null
+          dish_name?: string | null
+          stage?: 'at_pass' | 'at_table'
+          temp_c?: number
+          recorded_at?: string
+          source?: 'ir_manual' | 'ir_sensor'
+          created_at?: string
         }
       }
       experiment_results: {
@@ -528,6 +669,223 @@ export type Database = {
           last_error?: string | null
           created_at?: string
           updated_at?: string
+        }
+      }
+      zones: {
+        Row: {
+          id: string
+          restaurant_id: string
+          name: string
+          polygon: ZonePoint[]
+          camera_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          name: string
+          polygon: ZonePoint[]
+          camera_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          name?: string
+          polygon?: ZonePoint[]
+          camera_id?: string | null
+          created_at?: string
+        }
+      }
+      devices: {
+        Row: {
+          id: string
+          restaurant_id: string
+          device_type: 'phone' | 'cctv_bridge'
+          zone_id: string | null
+          token: string
+          status: 'pending' | 'active' | 'offline'
+          last_seen_at: string | null
+          created_at: string
+          // Set for cctv_bridge devices auto-provisioned by
+          // occupancy_detector.py - see 011_device_camera_link.sql.
+          camera_id: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          device_type: 'phone' | 'cctv_bridge'
+          zone_id?: string | null
+          token: string
+          status?: 'pending' | 'active' | 'offline'
+          last_seen_at?: string | null
+          created_at?: string
+          camera_id?: string | null
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          device_type?: 'phone' | 'cctv_bridge'
+          zone_id?: string | null
+          token?: string
+          status?: 'pending' | 'active' | 'offline'
+          last_seen_at?: string | null
+          created_at?: string
+          camera_id?: string | null
+        }
+      }
+      streams: {
+        Row: {
+          id: string
+          device_id: string
+          signal_type:
+            | 'sound_level_dba'
+            | 'sound_spectrum'
+            | 'light_level'
+            | 'light_color_temp'
+            | 'vibration'
+            | 'occupancy_count'
+            | 'zone_occupancy'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          device_id: string
+          signal_type:
+            | 'sound_level_dba'
+            | 'sound_spectrum'
+            | 'light_level'
+            | 'light_color_temp'
+            | 'vibration'
+            | 'occupancy_count'
+            | 'zone_occupancy'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          device_id?: string
+          signal_type?:
+            | 'sound_level_dba'
+            | 'sound_spectrum'
+            | 'light_level'
+            | 'light_color_temp'
+            | 'vibration'
+            | 'occupancy_count'
+            | 'zone_occupancy'
+          created_at?: string
+        }
+      }
+      readings: {
+        Row: {
+          id: string
+          stream_id: string
+          timestamp: string
+          value_json: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          stream_id: string
+          timestamp: string
+          value_json: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          stream_id?: string
+          timestamp?: string
+          value_json?: Json
+          created_at?: string
+        }
+      }
+      readings_rollup_1m: {
+        Row: {
+          stream_id: string
+          minute: string
+          mean: number | null
+          p50: number | null
+          p95: number | null
+          sample_count: number
+        }
+        Insert: {
+          stream_id: string
+          minute: string
+          mean?: number | null
+          p50?: number | null
+          p95?: number | null
+          sample_count: number
+        }
+        Update: {
+          stream_id?: string
+          minute?: string
+          mean?: number | null
+          p50?: number | null
+          p95?: number | null
+          sample_count?: number
+        }
+      }
+      interventions: {
+        Row: {
+          id: string
+          restaurant_id: string
+          timestamp: string
+          category:
+            | 'music'
+            | 'lighting'
+            | 'temperature'
+            | 'scent'
+            | 'layout'
+            | 'table_materials'
+            | 'menu'
+            | 'service_protocol'
+            | 'other'
+          description: string | null
+          zone_ids: string[]
+          // At least one of logged_by/logged_by_device_id is set - enforced
+          // by interventions_logged_by_check (010_intervention_device_attribution.sql).
+          logged_by: string | null
+          logged_by_device_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          timestamp?: string
+          category:
+            | 'music'
+            | 'lighting'
+            | 'temperature'
+            | 'scent'
+            | 'layout'
+            | 'table_materials'
+            | 'menu'
+            | 'service_protocol'
+            | 'other'
+          description?: string | null
+          zone_ids?: string[]
+          logged_by?: string | null
+          logged_by_device_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          timestamp?: string
+          category?:
+            | 'music'
+            | 'lighting'
+            | 'temperature'
+            | 'scent'
+            | 'layout'
+            | 'table_materials'
+            | 'menu'
+            | 'service_protocol'
+            | 'other'
+          description?: string | null
+          zone_ids?: string[]
+          logged_by?: string | null
+          logged_by_device_id?: string | null
+          created_at?: string
         }
       }
     }
