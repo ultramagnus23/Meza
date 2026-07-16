@@ -366,6 +366,10 @@ async function seed() {
       start_time: experimentStart.toISOString(),
       end_time: experimentEnd.toISOString(),
       status: 'completed',
+      // Required since 007_experiment_lab.sql (room-wide music lever ->
+      // day-level randomization); secondary_metrics defaults to '{return_rate}'.
+      randomization_unit: 'day',
+      primary_metric: 'order_value',
     })
     .select()
     .single()
@@ -392,6 +396,8 @@ async function seed() {
     start_time: new Date(now.getTime() - 6 * DAY_MS).toISOString(),
     end_time: null,
     status: 'active',
+    randomization_unit: 'day',
+    primary_metric: 'dessert_count',
   })
 
   // Recommendations - a mix of implemented and pending, matching what the

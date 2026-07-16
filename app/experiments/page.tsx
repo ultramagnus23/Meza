@@ -37,6 +37,8 @@ export default function ExperimentsPage() {
     test_condition: '',
     start_time: '',
     end_time: '',
+    randomization_unit: 'day',
+    primary_metric: 'order_value',
   })
 
   useEffect(() => {
@@ -84,6 +86,8 @@ export default function ExperimentsPage() {
         test_condition: '',
         start_time: '',
         end_time: '',
+        randomization_unit: 'day',
+        primary_metric: 'order_value',
       })
       loadExperiments()
     } catch (error: any) {
@@ -188,6 +192,38 @@ export default function ExperimentsPage() {
                     value={form.test_condition}
                     onChange={(e) => setForm({ ...form, test_condition: e.target.value })}
                   />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Randomization Unit</Label>
+                  <select
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                    value={form.randomization_unit}
+                    onChange={(e) => setForm({ ...form, randomization_unit: e.target.value })}
+                  >
+                    <option value="day">Day (room-wide levers: music, lighting, temperature)</option>
+                    <option value="session">Session</option>
+                    <option value="table">Table (menu, plateware, plate temperature)</option>
+                    <option value="dish">Dish</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Primary Metric</Label>
+                  <select
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                    value={form.primary_metric}
+                    onChange={(e) => setForm({ ...form, primary_metric: e.target.value })}
+                  >
+                    <option value="order_value">Average order value</option>
+                    <option value="dwell_time">Dwell time</option>
+                    <option value="dessert_count">Dessert attach</option>
+                    <option value="drink_count">Beverage attach</option>
+                    <option value="clearance_pct">Plate clearance %</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Locked once the experiment starts — pick before collecting data.
+                  </p>
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">

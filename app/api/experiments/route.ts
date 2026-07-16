@@ -51,9 +51,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'restaurant_id required' }, { status: 400 })
     }
 
+    // return_rate is a mandatory secondary metric (a treatment that raises
+    // tonight's bill but cuts return visits must always be visible) -
+    // enforced for real by experiments_secondary_metrics_return_rate_check
+    // in 007_experiment_lab.sql; defaulted here so callers that only care
+    // about their own primary metric don't have to know that.
+    const secondary_metrics: string[] = Array.isArray(data.secondary_metrics)
+      ? data.secondary_metrics
+      : []
+    if (!secondary_metrics.includes('return_rate')) {
+      secondary_metrics.push('return_rate')
+    }
+
     const { data: experiment, error } = await supabase
       .from('experiments')
-      .insert({ ...data, restaurant_id })
+      .insert({ ...data, secondary_metrics, restaurant_id })
       .select()
       .single()
 
