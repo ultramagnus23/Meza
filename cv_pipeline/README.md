@@ -12,6 +12,18 @@ configured table/queue regions, and posts anonymous occupancy metadata to
 Supabase. **No image is ever stored or transmitted** — each frame is
 discarded immediately after processing.
 
+As of the phone-sensing pivot (see `PIVOT_AUDIT.md`), this script also:
+- Tracks **per-table** occupied/empty state (not just a count) and runs a
+  debounced session-detection state machine that opens/closes
+  `table_sessions` rows automatically — configurable via
+  `SESSION_START_MINUTES` (default 3) and `SESSION_END_MINUTES` (default
+  10).
+- Maps detections onto **zone polygons** (`zones` table, configured
+  separately from the rectangular `table_regions`) and posts
+  `zone_occupancy`/`occupancy_count` readings through the same
+  `streams`/`readings` model the phone capture page uses, auto-registering
+  a `devices` row (`device_type='cctv_bridge'`) for itself on first run.
+
 ## Try it without hardware: `--simulate`
 
 Every install path below requires a real RTSP camera and a downloaded
@@ -73,6 +85,11 @@ Run one process per camera. `SUPABASE_SERVICE_KEY` is a privileged
 credential — keep it on the edge device only, never in a browser bundle or
 committed to source control (it bypasses Row Level Security by design so
 the pipeline can write on behalf of any restaurant it's configured for).
+
+Optional env vars: `SESSION_START_MINUTES` / `SESSION_END_MINUTES` tune
+how long a table must stay occupied/empty before a session opens/closes -
+defaults (3 / 10) are a starting guess, not validated against real service
+pace (no labeled pilot data exists yet - see `EVALUATION.md`).
 
 ## Multiple restaurants / multiple cameras
 
