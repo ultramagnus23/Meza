@@ -21,6 +21,7 @@ import {
   ChevronsUpDown,
   Menu,
   X,
+  Smartphone,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { href: '/experiments', label: 'Experiments', icon: FlaskConical },
   { href: '/recommendations', label: 'Recommendations', icon: Lightbulb },
   { href: '/cameras', label: 'Cameras', icon: Video },
+  { href: '/devices', label: 'Devices', icon: Smartphone },
   { href: '/upload', label: 'Import POS data', icon: UploadCloud },
 ]
 

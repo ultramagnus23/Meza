@@ -117,6 +117,16 @@ export const api = {
   deleteCamera: (id: string) =>
     fetchAPI<any>(`/cameras/${id}`, { method: 'DELETE' }),
 
+  // Devices (Phase 2 phone-sensing pivot - see PIVOT_AUDIT.md)
+  getDevices: (params: { restaurantId: string }) =>
+    fetchAPI<any>(`/devices?${new URLSearchParams(params as any)}`),
+  createDevice: (data: { restaurant_id: string; device_type: 'phone' | 'cctv_bridge'; zone_id?: string | null }) =>
+    fetchAPI<any>('/devices', { method: 'POST', body: JSON.stringify(data) }),
+  updateDevice: (id: string, data: { zone_id?: string | null; status?: string; rotate_token?: boolean }) =>
+    fetchAPI<any>(`/devices/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteDevice: (id: string) =>
+    fetchAPI<any>(`/devices/${id}`, { method: 'DELETE' }),
+
   // Auth
   getSession: () => fetchAPI<any>('/auth/session'),
   signIn: (email: string, password: string) =>
