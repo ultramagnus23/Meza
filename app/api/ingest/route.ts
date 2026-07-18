@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Papa from 'papaparse'
 import { getServerSupabase } from '@/lib/supabase'
 import { ingestRows, missingRequiredFields, type ColumnMapping } from '@/lib/csv-ingest'
+import { computeDataQualityProfile } from '@/lib/data-quality'
 
 // Returns the saved column mapping for a venue, if one exists, so the
 // upload page can auto-apply it on re-upload instead of re-asking.
@@ -148,6 +149,35 @@ export async function POST(req: Request) {
 
     if (batchError) throw batchError
 
+    // Data quality profile runs automatically after every ingest, over
+    // the venue's FULL history (not just this batch) - history depth and
+    // weekly volume are meaningless computed over a single upload.
+    const { data: allBills, error: billsFetchError } = await supabase
+      .from('bills')
+      .select('id, opened_at, settled_at, table_ref')
+      .eq('restaurant_id', restaurantId)
+    if (billsFetchError) throw billsFetchError
+
+    const billIds = (allBills ?? []).map((b: any) => b.id)
+    const { data: allItems, error: itemsFetchError } = billIds.length
+      ? await supabase.from('bill_items').select('item_name_norm').in('bill_id', billIds)
+      : { data: [], error: null }
+    if (itemsFetchError) throw itemsFetchError
+
+    const profile = computeDataQualityProfile(allBills ?? [], allItems ?? [])
+
+    const { error: profileError } = await supabase.from('data_quality_profiles').insert({
+      restaurant_id: restaurantId,
+      timestamps_live: profile.timestamps_live,
+      timestamps_evidence: profile.timestamps_evidence,
+      table_ref_coverage_pct: profile.table_ref_coverage_pct,
+      item_name_consistency_pct: profile.item_name_consistency_pct,
+      history_depth_days: profile.history_depth_days,
+      weekly_volume: profile.weekly_volume,
+      capability_mask: profile.capability_mask,
+    })
+    if (profileError) throw profileError
+
     return NextResponse.json({
       success: true,
       data: {
@@ -157,6 +187,7 @@ export async function POST(req: Request) {
         rowsParsed: result.rowsParsed,
         rowsRejected: result.rowsRejected,
         rejections: result.rejections,
+        profile,
       },
     })
   } catch (error: any) {
