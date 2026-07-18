@@ -29,7 +29,7 @@ export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Prom
 export const api = {
   // Restaurants
   getRestaurants: () => fetchAPI<any>('/restaurants'),
-  createRestaurant: (data: { name: string; location: string; timezone?: string; max_capacity?: number }) =>
+  createRestaurant: (data: { name: string; location: string; timezone?: string }) =>
     fetchAPI<any>('/restaurants', { method: 'POST', body: JSON.stringify(data) }),
   getRestaurant: (id: string) => fetchAPI<any>(`/restaurants/${id}`),
   updateRestaurant: (id: string, data: any) =>
@@ -40,6 +40,16 @@ export const api = {
     fetchAPI<any>(`/ingest?restaurantId=${encodeURIComponent(restaurantId)}`),
   ingestCsv: (formData: FormData) =>
     fetchAPI<any>('/ingest', { method: 'POST', body: formData }),
+
+  // Dish costs (Step 4: manual entry, the only cost data that exists)
+  getDishCosts: (restaurantId: string) =>
+    fetchAPI<any>(`/dish-costs?restaurantId=${encodeURIComponent(restaurantId)}`),
+  createDishCost: (data: { restaurant_id: string; item: string; cost: number; price: number }) =>
+    fetchAPI<any>('/dish-costs', { method: 'POST', body: JSON.stringify(data) }),
+  updateDishCost: (id: string, data: { item?: string; cost?: number; price?: number }) =>
+    fetchAPI<any>(`/dish-costs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteDishCost: (id: string) =>
+    fetchAPI<any>(`/dish-costs/${id}`, { method: 'DELETE' }),
 
   // Auth
   getSession: () => fetchAPI<any>('/auth/session'),

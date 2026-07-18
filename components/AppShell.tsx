@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   UploadCloud,
+  UtensilsCrossed,
   LogOut,
   Building2,
   ChevronsUpDown,
@@ -21,10 +22,11 @@ import {
 // discussion) - the old product's dashboard/occupancy/environment/
 // experiments/recommendations/cameras pages are archived (archive/legacy
 // branch), not part of this product. More entries get added here as the
-// new ingest/mapping/dish-cost/report pages are actually built, not
-// upfront as placeholders for pages that don't exist yet.
+// new report pages are actually built, not upfront as placeholders for
+// pages that don't exist yet.
 const NAV_ITEMS = [
   { href: '/upload', label: 'Import POS data', icon: UploadCloud },
+  { href: '/dish-costs', label: 'Dish costs', icon: UtensilsCrossed },
 ]
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
