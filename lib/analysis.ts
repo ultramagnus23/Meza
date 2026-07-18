@@ -33,7 +33,12 @@ export type LeakFinding = {
   size_inr_month: number
   confidence: number // 0-100, plain-language-adjacent (not a fabricated p-value)
   evidence: Record<string, unknown>
-  status: 'candidate' | 'insufficient_data'
+  // Always 'candidate' - a constructed LeakFinding is never the
+  // insufficient-data case, which returns a separate, disjoint shape
+  // instead (see each compute*Leak function's return type). Keeping this
+  // a single-value literal, not a union with 'insufficient_data', is
+  // what lets callers discriminate the two shapes cleanly.
+  status: 'candidate'
 }
 
 const MIN_SEGMENT_N = 30

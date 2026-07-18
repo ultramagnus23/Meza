@@ -51,6 +51,15 @@ export const api = {
   deleteDishCost: (id: string) =>
     fetchAPI<any>(`/dish-costs/${id}`, { method: 'DELETE' }),
 
+  // Reports (Steps 6-7: the one-pager)
+  getReports: (restaurantId: string) =>
+    fetchAPI<any>(`/reports?restaurantId=${encodeURIComponent(restaurantId)}`),
+  generateReport: (restaurantId: string) =>
+    fetchAPI<any>('/reports', { method: 'POST', body: JSON.stringify({ restaurantId }) }),
+  getReport: (id: string) => fetchAPI<any>(`/reports/${id}`),
+  updateReportStatus: (id: string, status: 'reviewed' | 'delivered') =>
+    fetchAPI<any>(`/reports/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+
   // Auth
   getSession: () => fetchAPI<any>('/auth/session'),
   signIn: (email: string, password: string) =>
