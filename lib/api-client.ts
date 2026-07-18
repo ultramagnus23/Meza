@@ -35,9 +35,11 @@ export const api = {
   updateRestaurant: (id: string, data: any) =>
     fetchAPI<any>(`/restaurants/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
-  // POS Orders (reworked in Step 2 for column mapping / PII scrub / idempotent re-ingest)
-  uploadOrders: (formData: FormData) =>
-    fetchAPI<any>('/pos-orders', { method: 'POST', body: formData }),
+  // CSV ingest (Step 2: interactive column mapping, PII scrub, idempotent re-ingest)
+  getColumnMap: (restaurantId: string) =>
+    fetchAPI<any>(`/ingest?restaurantId=${encodeURIComponent(restaurantId)}`),
+  ingestCsv: (formData: FormData) =>
+    fetchAPI<any>('/ingest', { method: 'POST', body: formData }),
 
   // Auth
   getSession: () => fetchAPI<any>('/auth/session'),
