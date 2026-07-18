@@ -38,10 +38,10 @@ export function getServerSupabase(req: Request) {
 }
 
 // Privileged server-only client for trusted backend jobs that have no
-// restaurant-owner session to forward (e.g. the recommendation engine cron
-// route). Bypasses RLS by design - never expose SUPABASE_SERVICE_ROLE_KEY
-// to the browser, and never call this from a route that handles a
-// user-supplied restaurant_id without itself checking authorization first.
+// restaurant-owner session to forward. Bypasses RLS by design - never
+// expose SUPABASE_SERVICE_ROLE_KEY to the browser, and never call this
+// from a route that handles a caller-supplied restaurant_id without
+// itself checking authorization first.
 export function getServiceSupabase() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!isSupabaseConfigured || !serviceKey) {
@@ -52,19 +52,6 @@ export function getServiceSupabase() {
   return createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
 }
 
-// A percentage-of-frame ROI box: 0-1 fractions of frame width/height,
-// matching cv_pipeline/occupancy_detector.py's TABLE_REGIONS/QUEUE_REGION format.
-export type CameraRegion = {
-  x1: number
-  y1: number
-  x2: number
-  y2: number
-}
-
-export type CameraTableRegion = CameraRegion & {
-  table_number: number
-}
-
 export type Json =
   | string
   | number
@@ -73,6 +60,9 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Database types for the diagnostic-tool schema (supabase/migrations/001_initial_schema.sql).
+// The old platform's types (occupancy/experiments/environment/etc.) are
+// preserved in full on the archive/legacy branch, not carried forward here.
 export type Database = {
   public: {
     Tables: {
@@ -83,7 +73,6 @@ export type Database = {
           name: string
           location: string
           timezone: string
-          max_capacity: number | null
           created_at: string
           updated_at: string
         }
@@ -93,7 +82,6 @@ export type Database = {
           name: string
           location: string
           timezone?: string
-          max_capacity?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -103,431 +91,279 @@ export type Database = {
           name?: string
           location?: string
           timezone?: string
-          max_capacity?: number | null
           created_at?: string
           updated_at?: string
         }
       }
-      occupancy_snapshots: {
+      venue_column_maps: {
         Row: {
           id: string
           restaurant_id: string
-          timestamp: string
-          occupancy_percentage: number | null
-          occupied_tables: number | null
-          available_tables: number | null
-          people_count: number | null
-          queue_length: number | null
-          wait_time: number | null
-          total_tables: number | null
-        }
-        Insert: {
-          id?: string
-          restaurant_id: string
-          timestamp?: string
-          occupancy_percentage?: number | null
-          occupied_tables?: number | null
-          available_tables?: number | null
-          people_count?: number | null
-          queue_length?: number | null
-          wait_time?: number | null
-          total_tables?: number | null
-        }
-        Update: {
-          id?: string
-          restaurant_id?: string
-          timestamp?: string
-          occupancy_percentage?: number | null
-          occupied_tables?: number | null
-          available_tables?: number | null
-          people_count?: number | null
-          queue_length?: number | null
-          wait_time?: number | null
-          total_tables?: number | null
-        }
-      }
-      table_sessions: {
-        Row: {
-          id: string
-          restaurant_id: string
-          table_number: number
-          party_size: number | null
-          start_time: string
-          end_time: string | null
-          dwell_time: number | null
-          order_value: number | null
-          item_count: number | null
-          dessert_count: number
-          drink_count: number
-        }
-        Insert: {
-          id?: string
-          restaurant_id: string
-          table_number: number
-          party_size?: number | null
-          start_time: string
-          end_time?: string | null
-          dwell_time?: number | null
-          order_value?: number | null
-          item_count?: number | null
-          dessert_count?: number
-          drink_count?: number
-        }
-        Update: {
-          id?: string
-          restaurant_id?: string
-          table_number?: number
-          party_size?: number | null
-          start_time?: string
-          end_time?: string | null
-          dwell_time?: number | null
-          order_value?: number | null
-          item_count?: number | null
-          dessert_count?: number
-          drink_count?: number
-        }
-      }
-      environment_snapshots: {
-        Row: {
-          id: string
-          restaurant_id: string
-          timestamp: string
-          temperature: number | null
-          humidity: number | null
-          weather: string | null
-          rainfall: boolean
-          music_genre: string | null
-          music_volume: number | null
-          lighting_brightness: number | null
-          lighting_temperature: number | null
-          promotion_active: boolean
-          special_event: string | null
-          staff_count: number | null
-          co2_ppm: number | null
-          pm25_ugm3: number | null
-          outdoor_aqi: number | null
-          lux: number | null
-          sound_level_db: number | null
-          source: 'manual' | 'sensor' | 'weather_api'
-        }
-        Insert: {
-          id?: string
-          restaurant_id: string
-          timestamp?: string
-          temperature?: number | null
-          humidity?: number | null
-          weather?: string | null
-          rainfall?: boolean
-          music_genre?: string | null
-          music_volume?: number | null
-          lighting_brightness?: number | null
-          lighting_temperature?: number | null
-          promotion_active?: boolean
-          special_event?: string | null
-          staff_count?: number | null
-          co2_ppm?: number | null
-          pm25_ugm3?: number | null
-          outdoor_aqi?: number | null
-          lux?: number | null
-          sound_level_db?: number | null
-          source?: 'manual' | 'sensor' | 'weather_api'
-        }
-        Update: {
-          id?: string
-          restaurant_id?: string
-          timestamp?: string
-          temperature?: number | null
-          humidity?: number | null
-          weather?: string | null
-          rainfall?: boolean
-          music_genre?: string | null
-          music_volume?: number | null
-          lighting_brightness?: number | null
-          lighting_temperature?: number | null
-          promotion_active?: boolean
-          special_event?: string | null
-          staff_count?: number | null
-          co2_ppm?: number | null
-          pm25_ugm3?: number | null
-          outdoor_aqi?: number | null
-          lux?: number | null
-          sound_level_db?: number | null
-          source?: 'manual' | 'sensor' | 'weather_api'
-        }
-      }
-      operational_snapshots: {
-        Row: {
-          id: string
-          restaurant_id: string
-          timestamp: string
-          staff_count: number | null
-          kitchen_load: number | null
-          service_time: number | null
-          order_prep_time: number | null
-        }
-        Insert: {
-          id?: string
-          restaurant_id: string
-          timestamp?: string
-          staff_count?: number | null
-          kitchen_load?: number | null
-          service_time?: number | null
-          order_prep_time?: number | null
-        }
-        Update: {
-          id?: string
-          restaurant_id?: string
-          timestamp?: string
-          staff_count?: number | null
-          kitchen_load?: number | null
-          service_time?: number | null
-          order_prep_time?: number | null
-        }
-      }
-      experiments: {
-        Row: {
-          id: string
-          restaurant_id: string
-          experiment_name: string
-          hypothesis: string
-          variable_changed: string
-          control_condition: string | null
-          test_condition: string | null
-          start_time: string
-          end_time: string | null
-          status: string
-        }
-        Insert: {
-          id?: string
-          restaurant_id: string
-          experiment_name: string
-          hypothesis: string
-          variable_changed: string
-          control_condition?: string | null
-          test_condition?: string | null
-          start_time: string
-          end_time?: string | null
-          status?: string
-        }
-        Update: {
-          id?: string
-          restaurant_id?: string
-          experiment_name?: string
-          hypothesis?: string
-          variable_changed?: string
-          control_condition?: string | null
-          test_condition?: string | null
-          start_time?: string
-          end_time?: string | null
-          status?: string
-        }
-      }
-      experiment_results: {
-        Row: {
-          id: string
-          experiment_id: string
-          revenue_delta: number | null
-          average_order_value_delta: number | null
-          dwell_time_delta: number | null
-          dessert_delta: number | null
-          drink_delta: number | null
-          confidence_score: number | null
-          measured_at: string
-        }
-        Insert: {
-          id?: string
-          experiment_id: string
-          revenue_delta?: number | null
-          average_order_value_delta?: number | null
-          dwell_time_delta?: number | null
-          dessert_delta?: number | null
-          drink_delta?: number | null
-          confidence_score?: number | null
-          measured_at?: string
-        }
-        Update: {
-          id?: string
-          experiment_id?: string
-          revenue_delta?: number | null
-          average_order_value_delta?: number | null
-          dwell_time_delta?: number | null
-          dessert_delta?: number | null
-          drink_delta?: number | null
-          confidence_score?: number | null
-          measured_at?: string
-        }
-      }
-      recommendations: {
-        Row: {
-          id: string
-          restaurant_id: string
-          timestamp: string
-          recommendation: string
-          rule_key: string | null
-          confidence: number | null
-          expected_revenue_impact: number | null
-          implemented: boolean
-          implemented_at: string | null
-        }
-        Insert: {
-          id?: string
-          restaurant_id: string
-          timestamp?: string
-          recommendation: string
-          rule_key?: string | null
-          confidence?: number | null
-          expected_revenue_impact?: number | null
-          implemented?: boolean
-          implemented_at?: string | null
-        }
-        Update: {
-          id?: string
-          restaurant_id?: string
-          timestamp?: string
-          recommendation?: string
-          rule_key?: string | null
-          confidence?: number | null
-          expected_revenue_impact?: number | null
-          implemented?: boolean
-          implemented_at?: string | null
-        }
-      }
-      pos_orders: {
-        Row: {
-          id: string
-          restaurant_id: string
-          external_id: string | null
-          timestamp: string
-          order_type: string
-          channel: string
-          subtotal: number
-          tax: number
-          discount: number
-          total_amount: number
-          payment_method: string | null
-          guest_count: number | null
-          table_number: number | null
-          status: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          restaurant_id: string
-          external_id?: string | null
-          timestamp?: string
-          order_type?: string
-          channel?: string
-          subtotal?: number
-          tax?: number
-          discount?: number
-          total_amount: number
-          payment_method?: string | null
-          guest_count?: number | null
-          table_number?: number | null
-          status?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          restaurant_id?: string
-          external_id?: string | null
-          timestamp?: string
-          order_type?: string
-          channel?: string
-          subtotal?: number
-          tax?: number
-          discount?: number
-          total_amount?: number
-          payment_method?: string | null
-          guest_count?: number | null
-          table_number?: number | null
-          status?: string
-          created_at?: string
-        }
-      }
-      pos_order_items: {
-        Row: {
-          id: string
-          order_id: string
-          item_name: string
-          category: string | null
-          quantity: number
-          price: number
-          total: number
-          is_dessert: boolean
-          is_drink: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          order_id: string
-          item_name: string
-          category?: string | null
-          quantity: number
-          price: number
-          total: number
-          is_dessert?: boolean
-          is_drink?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          order_id?: string
-          item_name?: string
-          category?: string | null
-          quantity?: number
-          price?: number
-          total?: number
-          is_dessert?: boolean
-          is_drink?: boolean
-          created_at?: string
-        }
-      }
-      cameras: {
-        Row: {
-          id: string
-          restaurant_id: string
-          name: string
-          rtsp_url: string
-          status: 'active' | 'inactive' | 'error'
-          snapshot_interval_seconds: number
-          fps: number
-          table_regions: CameraTableRegion[]
-          queue_region: CameraRegion | null
-          last_snapshot_at: string | null
-          last_error: string | null
+          // canonical field name -> source CSV column name
+          mapping: Json
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           restaurant_id: string
-          name: string
-          rtsp_url: string
-          status?: 'active' | 'inactive' | 'error'
-          snapshot_interval_seconds?: number
-          fps?: number
-          table_regions?: CameraTableRegion[]
-          queue_region?: CameraRegion | null
-          last_snapshot_at?: string | null
-          last_error?: string | null
+          mapping: Json
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           restaurant_id?: string
-          name?: string
-          rtsp_url?: string
-          status?: 'active' | 'inactive' | 'error'
-          snapshot_interval_seconds?: number
-          fps?: number
-          table_regions?: CameraTableRegion[]
-          queue_region?: CameraRegion | null
-          last_snapshot_at?: string | null
-          last_error?: string | null
+          mapping?: Json
           created_at?: string
           updated_at?: string
+        }
+      }
+      ingestion_batches: {
+        Row: {
+          id: string
+          restaurant_id: string
+          filename: string | null
+          uploaded_at: string
+          rows_in: number
+          rows_parsed: number
+          rows_rejected: number
+          // array of {row_number, reason} - never just a count
+          rejection_reasons: Json
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          filename?: string | null
+          uploaded_at?: string
+          rows_in?: number
+          rows_parsed?: number
+          rows_rejected?: number
+          rejection_reasons?: Json
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          filename?: string | null
+          uploaded_at?: string
+          rows_in?: number
+          rows_parsed?: number
+          rows_rejected?: number
+          rejection_reasons?: Json
+        }
+      }
+      bills: {
+        Row: {
+          id: string
+          restaurant_id: string
+          // Unique per (restaurant_id, external_bill_id) - the idempotency
+          // key re-ingest upserts against. Never globally unique.
+          external_bill_id: string
+          opened_at: string
+          settled_at: string | null
+          table_ref: string | null
+          gross: number
+          discount: number
+          payment_type: 'upi' | 'card' | 'cash' | 'other' | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          external_bill_id: string
+          opened_at: string
+          settled_at?: string | null
+          table_ref?: string | null
+          gross: number
+          discount?: number
+          payment_type?: 'upi' | 'card' | 'cash' | 'other' | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          external_bill_id?: string
+          opened_at?: string
+          settled_at?: string | null
+          table_ref?: string | null
+          gross?: number
+          discount?: number
+          payment_type?: 'upi' | 'card' | 'cash' | 'other' | null
+          created_at?: string
+        }
+      }
+      bill_items: {
+        Row: {
+          id: string
+          bill_id: string
+          item_name_raw: string
+          item_name_norm: string | null
+          category: string | null
+          qty: number
+          price: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          bill_id: string
+          item_name_raw: string
+          item_name_norm?: string | null
+          category?: string | null
+          qty?: number
+          price: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          bill_id?: string
+          item_name_raw?: string
+          item_name_norm?: string | null
+          category?: string | null
+          qty?: number
+          price?: number
+          created_at?: string
+        }
+      }
+      dish_costs: {
+        Row: {
+          id: string
+          restaurant_id: string
+          item: string
+          cost: number
+          price: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          item: string
+          cost: number
+          price: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          item?: string
+          cost?: number
+          price?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      data_quality_profiles: {
+        Row: {
+          id: string
+          restaurant_id: string
+          computed_at: string
+          timestamps_live: boolean | null
+          timestamps_evidence: Json | null
+          table_ref_coverage_pct: number | null
+          item_name_consistency_pct: number | null
+          history_depth_days: number | null
+          weekly_volume: number | null
+          // {"attach_rate": {"allowed": bool, "reason": string|null}, ...} -
+          // the plain-language, owner-readable suppression reasons printed
+          // verbatim on the one-pager.
+          capability_mask: Json
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          computed_at?: string
+          timestamps_live?: boolean | null
+          timestamps_evidence?: Json | null
+          table_ref_coverage_pct?: number | null
+          item_name_consistency_pct?: number | null
+          history_depth_days?: number | null
+          weekly_volume?: number | null
+          capability_mask?: Json
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          computed_at?: string
+          timestamps_live?: boolean | null
+          timestamps_evidence?: Json | null
+          table_ref_coverage_pct?: number | null
+          item_name_consistency_pct?: number | null
+          history_depth_days?: number | null
+          weekly_volume?: number | null
+          capability_mask?: Json
+        }
+      }
+      leak_findings: {
+        Row: {
+          id: string
+          restaurant_id: string
+          rule: string
+          scope: string | null
+          size_inr_month: number | null
+          confidence: number | null
+          // the inline evidence + arithmetic a reader can audit
+          evidence: Json
+          status: 'candidate' | 'insufficient_data' | 'suppressed'
+          computed_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          rule: string
+          scope?: string | null
+          size_inr_month?: number | null
+          confidence?: number | null
+          evidence?: Json
+          status?: 'candidate' | 'insufficient_data' | 'suppressed'
+          computed_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          rule?: string
+          scope?: string | null
+          size_inr_month?: number | null
+          confidence?: number | null
+          evidence?: Json
+          status?: 'candidate' | 'insufficient_data' | 'suppressed'
+          computed_at?: string
+        }
+      }
+      reports: {
+        Row: {
+          id: string
+          restaurant_id: string
+          // draft -> reviewed -> delivered. "delivered" requires an
+          // explicit manual action - nothing auto-advances a report here.
+          status: 'draft' | 'reviewed' | 'delivered'
+          headline_finding_id: string | null
+          // frozen one-pager content at generation time - auditable, not
+          // silently re-computed if underlying data changes later.
+          snapshot: Json
+          generated_at: string
+          reviewed_at: string | null
+          delivered_at: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          status?: 'draft' | 'reviewed' | 'delivered'
+          headline_finding_id?: string | null
+          snapshot?: Json
+          generated_at?: string
+          reviewed_at?: string | null
+          delivered_at?: string | null
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          status?: 'draft' | 'reviewed' | 'delivered'
+          headline_finding_id?: string | null
+          snapshot?: Json
+          generated_at?: string
+          reviewed_at?: string | null
+          delivered_at?: string | null
         }
       }
     }
@@ -535,10 +371,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_restaurant_ids_for_user: {
-        Args: Record<string, never>
-        Returns: string[]
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
