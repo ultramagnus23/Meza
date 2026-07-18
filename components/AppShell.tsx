@@ -9,12 +9,6 @@ import { api } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
-  LayoutDashboard,
-  Activity,
-  CloudSun,
-  FlaskConical,
-  Lightbulb,
-  Video,
   UploadCloud,
   LogOut,
   Building2,
@@ -23,13 +17,13 @@ import {
   X,
 } from 'lucide-react'
 
+// Trimmed for the diagnostic-tool rebuild (see the "Final Build" plan
+// discussion) - the old product's dashboard/occupancy/environment/
+// experiments/recommendations/cameras pages are archived (archive/legacy
+// branch), not part of this product. More entries get added here as the
+// new ingest/mapping/dish-cost/report pages are actually built, not
+// upfront as placeholders for pages that don't exist yet.
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/occupancy', label: 'Occupancy', icon: Activity },
-  { href: '/environment', label: 'Environment', icon: CloudSun },
-  { href: '/experiments', label: 'Experiments', icon: FlaskConical },
-  { href: '/recommendations', label: 'Recommendations', icon: Lightbulb },
-  { href: '/cameras', label: 'Cameras', icon: Video },
   { href: '/upload', label: 'Import POS data', icon: UploadCloud },
 ]
 

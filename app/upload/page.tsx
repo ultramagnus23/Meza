@@ -25,7 +25,7 @@ export default function UploadPage() {
       return
     }
     if (!selectedRestaurant) {
-      router.push('/dashboard')
+      router.push('/create-restaurant')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, selectedRestaurant])
