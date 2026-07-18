@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "verify:pii-scrub": "tsx scripts/verify-pii-scrub.ts"
+    "verify:pii-scrub": "tsx scripts/verify-pii-scrub.ts",
+    "verify:data-quality": "tsx scripts/verify-data-quality.ts",
+    "verify:analysis": "tsx scripts/verify-analysis.ts",
+    "verify:all": "npm run verify:pii-scrub && npm run verify:data-quality && npm run verify:analysis"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
