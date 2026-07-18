@@ -83,6 +83,7 @@ const TEMPLATES = [
     variable_changed: 'music_genre / music tempo (proxy for music_volume + genre logged in environment_snapshots)',
     control_condition: 'Current upbeat playlist (>120 BPM) played at usual volume during 7-10pm.',
     test_condition: 'Slow/ambient playlist (<90 BPM) at the same volume during 7-10pm, all else unchanged.',
+    primary_metric: 'dwell_time',
   },
   {
     experiment_name: 'Lower indoor temperature during peak hours',
@@ -93,6 +94,7 @@ const TEMPLATES = [
     variable_changed: 'temperature (environment_snapshots.temperature)',
     control_condition: 'AC setpoint left at current level (~26-28°C) during peak hours.',
     test_condition: 'AC setpoint lowered to ~22-24°C during the same peak hours, all else unchanged.',
+    primary_metric: 'drink_count',
   },
   {
     experiment_name: 'Warmer, dimmer lighting in the evening',
@@ -104,6 +106,7 @@ const TEMPLATES = [
     variable_changed: 'lighting_brightness / lighting_temperature (environment_snapshots)',
     control_condition: 'Current bright/cool lighting (>70 brightness, >4000K) after 6pm.',
     test_condition: 'Warm/dim lighting (<40 brightness, <3000K) after 6pm, all else unchanged.',
+    primary_metric: 'order_value',
   },
   {
     experiment_name: 'Visible queue/wait display at the entrance',
@@ -115,6 +118,7 @@ const TEMPLATES = [
       'manually via special_event or an operational note for the test window)',
     control_condition: 'No visible wait-time information; guests estimate the queue themselves.',
     test_condition: 'A screen or sign showing current queue_length and estimated wait_time at the entrance.',
+    primary_metric: 'walk_in_conversion_rate',
   },
   {
     experiment_name: 'Occupied waiting experience vs. idle waiting',
@@ -126,6 +130,7 @@ const TEMPLATES = [
       'vs. people_count actually seated for the test window)',
     control_condition: 'Guests wait standing with no activity or seating provided.',
     test_condition: 'Guests wait with a seated area, menu preview, and QR ordering preview available.',
+    primary_metric: 'queue_abandonment_rate',
   },
 ]
 
@@ -151,6 +156,11 @@ async function main() {
     test_condition: t.test_condition,
     start_time: now, // placeholder: experiment hasn't actually started - status stays 'planned' until the owner runs it
     status: 'planned',
+    // Required since 007_experiment_lab.sql. All five templates are
+    // room-wide atmospherics levers, so they randomize at the day level;
+    // secondary_metrics is left to its DB default ('{return_rate}').
+    randomization_unit: 'day',
+    primary_metric: t.primary_metric,
   }))
 
   const { data: inserted, error: insertErr } = await supabase
