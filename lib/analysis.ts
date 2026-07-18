@@ -137,7 +137,6 @@ export function computeAttachRateLeak(
     return { status: 'insufficient_data', reason: `Needs at least ${MIN_SEGMENT_N * 2} bills to compare spend-band segments; has ${bills.length}.` }
   }
 
-  const sortedGrosses = [...bills.map((b) => b.gross)].sort((a, b) => a - b)
   const days = historyDays(bills)
 
   const billHasCategory = new Map<number, Set<string>>()
@@ -155,10 +154,35 @@ export function computeAttachRateLeak(
     ;(categoryPrices[group] ??= []).push(item.price)
   }
 
+  // Per-bill spend attributable to each category, so it can be excluded
+  // from that category's own spend-band basis below. Without this, a
+  // bill's gross (whether mapped from a bill-total column or, more
+  // acutely, derived by summing item lines - see lib/csv-ingest.ts's
+  // gross_source) mechanically includes the very item being tested for
+  // attachment. That makes "having dessert" partly CAUSE "being
+  // classified as higher spend," which is circular, not a real segment
+  // difference - caught by this module producing an obviously spurious
+  // 44.5-point gap on synthetic data specifically constructed to have no
+  // real one (see scripts/demo.ts's Venue 3).
+  const categorySpendByBill = new Map<number, Record<string, number>>()
+  for (const item of items) {
+    const group = classifyCategory(item.category)
+    if (!group) continue
+    if (!categorySpendByBill.has(item.bill_index)) categorySpendByBill.set(item.bill_index, {})
+    const rec = categorySpendByBill.get(item.bill_index)!
+    rec[group] = (rec[group] ?? 0) + item.qty * item.price
+  }
+
   let best: LeakFinding | null = null
 
   for (const group of Object.keys(CATEGORY_KEYWORDS)) {
     if (!categoryPrices[group] || categoryPrices[group].length === 0) continue
+
+    // Spend-band basis for THIS category: gross minus whatever this bill
+    // spent on the category being tested. Recomputed per category since
+    // the exclusion differs by group.
+    const adjustedGross = bills.map((b, i) => b.gross - (categorySpendByBill.get(i)?.[group] ?? 0))
+    const sortedAdjustedGrosses = [...adjustedGross].sort((a, b) => a - b)
 
     for (const dp of ['lunch', 'dinner'] as const) {
       const segmentBills = bills
@@ -170,8 +194,8 @@ export function computeAttachRateLeak(
         mid: { n: 0, attached: 0 },
         high: { n: 0, attached: 0 },
       }
-      for (const { bill, index } of segmentBills) {
-        const band = spendBand(bill.gross, sortedGrosses)
+      for (const { index } of segmentBills) {
+        const band = spendBand(adjustedGross[index], sortedAdjustedGrosses)
         byBand[band].n += 1
         if (billHasCategory.get(index)?.has(group)) byBand[band].attached += 1
       }
