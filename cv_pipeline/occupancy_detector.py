@@ -35,8 +35,25 @@ extra detection passes:
     configurable, not hardcoded - restaurant service pace varies and this
     can't be tuned empirically without labeled pilot data (same honesty
     caveat cv_pipeline/EVALUATION.md already states about the detector
-    itself). In-flight debounce state lives in-process and is lost on
-    restart - a documented limitation, not fixed this pass.
+    itself).
+
+The Data Spine pass (supabase/migrations/012_data_spine.sql) extended
+this further:
+  - SessionTracker now rehydrates open sessions from table_sessions on
+    startup instead of trusting in-process state alone - restart-safe by
+    construction, not just documented as a limitation. A restart no
+    longer risks opening a duplicate session for a table that already has
+    one open.
+  - detect_table_occupancy returns an occupancy_estimate (count of person
+    detections in the table's region) and detection_confidence (mean
+    YOLO box confidence among them, null when the table reads empty -
+    never a fabricated 0.0 standing in for "no detection") alongside the
+    occupied/empty boolean. SessionTracker writes these onto the open
+    session every cycle - the latest reading, not an average, so it's
+    honestly "as of last detection" rather than implying a computed
+    aggregate. table_sessions.zone_id is set at session start via a
+    table_number -> zone_id map built from the type='table' zones the
+    012 migration backfilled from table_regions.
 
 Required environment variables:
   CAMERA_ID            - id of the row in the `cameras` table to run
@@ -53,6 +70,12 @@ Optional:
 Run (real camera, requires opencv-python + downloaded detector model):
   CAMERA_ID=<uuid> SUPABASE_URL=... SUPABASE_SERVICE_KEY=... \
     python occupancy_detector.py
+
+Run against a recorded file instead of a live RTSP stream (cv2.VideoCapture
+accepts a local path transparently - this overrides the camera's
+configured rtsp_url for this run only, no DB edit needed):
+  CAMERA_ID=<uuid> SUPABASE_URL=... SUPABASE_SERVICE_KEY=... \
+    python occupancy_detector.py --source /path/to/recording.mp4
 
 Run (no hardware, no opencv required - posts synthetic snapshots):
   CAMERA_ID=<uuid> SUPABASE_URL=... SUPABASE_SERVICE_KEY=... \
@@ -184,24 +207,184 @@ def point_in_polygon(x: float, y: float, polygon_px: list) -> bool:
     return inside
 
 
-class SessionTracker:
-    """Debounced per-table occupied/empty state machine that finally gives
-    table_sessions a real writer. Sustained occupancy (>= start_seconds)
-    opens a session; sustained emptiness (>= end_seconds) closes it. State
-    is in-process only - a restart loses in-flight debounce timers and any
-    already-open session's tracking (the row itself stays open in the DB
-    with no end_time until this process, or a human, closes it)."""
+def ensure_table_zones(supabase_url: str, service_key: str, restaurant_id: str,
+                        camera_id: str, table_regions: list, zones: list) -> list:
+    """Create a type='table' zone for any table_regions entry that doesn't
+    already have a matching zone. 012_data_spine.sql's zones backfill was a
+    one-time INSERT over cameras that existed at migration time - a camera
+    registered afterward would otherwise never get its table_regions
+    turned into zones, silently breaking table_number -> zone_id linking
+    (and therefore per-table source_health) for it. Returns the full zone
+    list including any newly created ones."""
+    existing_map = build_table_zone_map(table_regions, zones)
+    headers = {
+        "apikey": service_key, "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json", "Prefer": "return=representation",
+    }
+    created = []
+    for table in table_regions:
+        table_number = table["table_number"]
+        if table_number in existing_map:
+            continue
+        polygon = [
+            {"x": table["x1"], "y": table["y1"]},
+            {"x": table["x2"], "y": table["y1"]},
+            {"x": table["x2"], "y": table["y2"]},
+            {"x": table["x1"], "y": table["y2"]},
+        ]
+        try:
+            resp = requests.post(
+                f"{supabase_url}/rest/v1/zones",
+                headers=headers,
+                data=json.dumps({
+                    "restaurant_id": restaurant_id,
+                    "name": f"Table {table_number}",
+                    "polygon": polygon,
+                    "camera_id": camera_id,
+                    "type": "table",
+                }),
+                timeout=10,
+            )
+            resp.raise_for_status()
+            row = resp.json()[0]
+            created.append(row)
+            print(f"[info] created zone '{row['name']}' for table {table_number} (no prior zone matched)")
+        except Exception as e:
+            print(f"[warn] failed to create zone for table {table_number}: {e}")
+    return zones + created
 
-    def __init__(self, supabase_url, service_key, restaurant_id, start_minutes, end_minutes):
+
+def upsert_source_health(supabase_url: str, service_key: str, restaurant_id: str,
+                          source_type: str, source_key: str, status: str, last_error: str = None):
+    """Best-effort upsert into source_health - observability, not the
+    primary write path, so failures here are logged and swallowed rather
+    than interrupting detection (same philosophy as report_camera_status)."""
+    now = datetime.now().isoformat()
+    payload = {
+        "restaurant_id": restaurant_id,
+        "source_type": source_type,
+        "source_key": str(source_key),
+        "status": status,
+        "updated_at": now,
+        "last_error": last_error,
+    }
+    if status == "healthy":
+        payload["last_success_at"] = now
+    try:
+        requests.post(
+            f"{supabase_url}/rest/v1/source_health",
+            params={"on_conflict": "restaurant_id,source_type,source_key"},
+            headers={
+                "apikey": service_key,
+                "Authorization": f"Bearer {service_key}",
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates",
+            },
+            data=json.dumps(payload),
+            timeout=10,
+        )
+    except Exception as e:
+        print(f"[warn] failed to upsert source_health for {source_type}/{source_key}: {e}")
+
+
+def build_table_zone_map(table_regions: list, zones: list) -> dict:
+    """Match type='table' zones back to a table_number via their bounding
+    rectangle. zones has no table_number column - the 012_data_spine.sql
+    backfill produced zones whose polygon corners exactly match the
+    originating table_regions rectangle, so a direct (tolerant) coordinate
+    comparison is a reliable match, not a guess."""
+    zone_map = {}
+    table_zones = [z for z in zones if z.get("type") == "table" and len(z.get("polygon") or []) == 4]
+    for table in table_regions:
+        for zone in table_zones:
+            xs = [pt["x"] for pt in zone["polygon"]]
+            ys = [pt["y"] for pt in zone["polygon"]]
+            if (
+                abs(min(xs) - table["x1"]) < 1e-6 and abs(max(xs) - table["x2"]) < 1e-6
+                and abs(min(ys) - table["y1"]) < 1e-6 and abs(max(ys) - table["y2"]) < 1e-6
+            ):
+                zone_map[table["table_number"]] = zone["id"]
+                break
+    return zone_map
+
+
+def _parse_iso(ts: str) -> datetime:
+    # table_sessions.start_time comes back from PostgREST as
+    # '2026-07-16T10:30:00+00:00' - Python's fromisoformat handles this
+    # directly on 3.11+; the replace handles the 'Z' suffix some Postgres
+    # configs emit instead, for portability to older 3.x.
+    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+
+
+class SessionTracker:
+    """Debounced per-table occupied/empty state machine that gives
+    table_sessions a real, restart-safe writer. Sustained occupancy
+    (>= start_seconds) opens a session; sustained emptiness
+    (>= end_seconds) closes it.
+
+    Restart-safety: on construction, rehydrates from any status='open'
+    table_sessions rows already in the DB for this restaurant's tables,
+    rather than trusting in-process state alone. Without this, a process
+    restart while a table was mid-session would have no memory of the
+    already-open row and could open a duplicate on the next debounced
+    transition - this is exactly the gap closed here."""
+
+    def __init__(self, supabase_url, service_key, restaurant_id, start_minutes, end_minutes,
+                 table_numbers=None, zone_id_by_table=None):
         self.supabase_url = supabase_url
         self.service_key = service_key
         self.restaurant_id = restaurant_id
         self.start_seconds = start_minutes * 60
         self.end_seconds = end_minutes * 60
+        self.zone_id_by_table = zone_id_by_table or {}
         self.tables = {}  # table_number -> state dict
+        self._rehydrate(table_numbers or [])
+
+    def _rehydrate(self, table_numbers):
+        """Fetch open sessions for this restaurant's tables and resume
+        tracking them as already-confirmed-occupied, instead of starting
+        fresh and risking a duplicate session on the next transition."""
+        if not table_numbers:
+            return
+        try:
+            resp = requests.get(
+                f"{self.supabase_url}/rest/v1/table_sessions",
+                params={
+                    "restaurant_id": f"eq.{self.restaurant_id}",
+                    "status": "eq.open",
+                    "select": "id,table_number,start_time",
+                },
+                headers=self._headers(None),
+                timeout=10,
+            )
+            resp.raise_for_status()
+            open_sessions = resp.json()
+        except Exception as e:
+            print(f"[warn] failed to rehydrate open sessions, starting fresh: {e}")
+            return
+
+        now = datetime.now()
+        table_set = set(table_numbers)
+        resumed = 0
+        for row in open_sessions:
+            table_number = row["table_number"]
+            if table_number not in table_set:
+                continue  # a different camera's table, or a manually-opened session
+            self.tables[table_number] = {
+                "confirmed_occupied": True,
+                "candidate": True,
+                "candidate_since": now,
+                "session_id": row["id"],
+                "session_start": _parse_iso(row["start_time"]),
+            }
+            resumed += 1
+        if resumed:
+            print(f"[session] rehydrated {resumed} already-open session(s) on startup")
 
     def update(self, table_occupancy: dict, now: datetime):
-        for table_number, occupied in table_occupancy.items():
+        """table_occupancy: {table_number: {'occupied': bool, 'estimate': int, 'confidence': float|None}}"""
+        for table_number, state in table_occupancy.items():
+            occupied = state["occupied"]
             t = self.tables.setdefault(table_number, {
                 "confirmed_occupied": False,
                 "candidate": occupied,
@@ -218,32 +401,46 @@ class SessionTracker:
             if occupied and not t["confirmed_occupied"] and elapsed >= self.start_seconds:
                 t["confirmed_occupied"] = True
                 t["session_start"] = now
-                t["session_id"] = self._start_session(table_number, now)
+                t["session_id"] = self._start_session(table_number, now, state)
             elif not occupied and t["confirmed_occupied"] and elapsed >= self.end_seconds:
                 t["confirmed_occupied"] = False
                 if t["session_id"]:
                     self._end_session(t["session_id"], t["session_start"], now)
                 t["session_id"] = None
                 t["session_start"] = None
+            elif occupied and t["confirmed_occupied"] and t["session_id"]:
+                # Session already open - refresh occupancy_estimate/
+                # detection_confidence with the latest reading rather than
+                # only ever setting them once at open.
+                self._update_occupancy(t["session_id"], state)
 
     def _headers(self, prefer):
-        return {
+        headers = {
             "apikey": self.service_key,
             "Authorization": f"Bearer {self.service_key}",
-            "Content-Type": "application/json",
-            "Prefer": prefer,
         }
+        if prefer is not None:
+            headers["Content-Type"] = "application/json"
+            headers["Prefer"] = prefer
+        return headers
 
-    def _start_session(self, table_number, start_time):
+    def _start_session(self, table_number, start_time, state):
         try:
+            payload = {
+                "restaurant_id": self.restaurant_id,
+                "table_number": table_number,
+                "start_time": start_time.isoformat(),
+                "source": "cctv",
+                "occupancy_estimate": state.get("estimate"),
+                "detection_confidence": state.get("confidence"),
+            }
+            zone_id = self.zone_id_by_table.get(table_number)
+            if zone_id:
+                payload["zone_id"] = zone_id
             resp = requests.post(
                 f"{self.supabase_url}/rest/v1/table_sessions",
                 headers=self._headers("return=representation"),
-                data=json.dumps({
-                    "restaurant_id": self.restaurant_id,
-                    "table_number": table_number,
-                    "start_time": start_time.isoformat(),
-                }),
+                data=json.dumps(payload),
                 timeout=10,
             )
             if resp.status_code in (200, 201):
@@ -254,6 +451,23 @@ class SessionTracker:
         except Exception as e:
             print(f"[warn] error starting session for table {table_number}: {e}")
         return None
+
+    def _update_occupancy(self, session_id, state):
+        try:
+            resp = requests.patch(
+                f"{self.supabase_url}/rest/v1/table_sessions",
+                params={"id": f"eq.{session_id}"},
+                headers=self._headers("return=minimal"),
+                data=json.dumps({
+                    "occupancy_estimate": state.get("estimate"),
+                    "detection_confidence": state.get("confidence"),
+                }),
+                timeout=10,
+            )
+            if resp.status_code not in (200, 204):
+                print(f"[warn] failed to refresh occupancy for session {session_id}: {resp.status_code} {resp.text}")
+        except Exception as e:
+            print(f"[warn] error refreshing occupancy for session {session_id}: {e}")
 
     def _end_session(self, session_id, start_time, end_time):
         dwell_minutes = round((end_time - start_time).total_seconds() / 60)
@@ -275,7 +489,7 @@ class SessionTracker:
 
 class OccupancyDetector:
     def __init__(self, config: dict, supabase_url: str, supabase_key: str, simulate: bool = False,
-                 session_start_minutes: float = 3, session_end_minutes: float = 10):
+                 session_start_minutes: float = 3, session_end_minutes: float = 10, source: str = None):
         self.config = config
         self.supabase_url = supabase_url
         self.supabase_key = supabase_key
@@ -283,7 +497,10 @@ class OccupancyDetector:
 
         self.camera_id = config["id"]
         self.restaurant_id = config["restaurant_id"]
-        self.rtsp_url = config["rtsp_url"]
+        # --source overrides the camera's configured rtsp_url for this run
+        # only (e.g. a local recorded file for testing) - cv2.VideoCapture
+        # accepts a local path transparently, no DB edit needed.
+        self.rtsp_url = source or config["rtsp_url"]
         self.snapshot_interval = config.get("snapshot_interval_seconds") or 300
         self.table_regions = config.get("table_regions") or []
         self.queue_region = config.get("queue_region")
@@ -294,6 +511,18 @@ class OccupancyDetector:
                   "regions from the MEZA dashboard's Cameras page.")
 
         self.zones = load_zones(supabase_url, supabase_key, self.camera_id)
+        if self.table_regions:
+            # Backfills any table_regions entry with no matching zone yet -
+            # covers cameras registered after 012_data_spine.sql's one-time
+            # migration-time backfill ran. Note this means zone_occupancy
+            # readings will also include type='table' zones going forward -
+            # redundant with occupancy_count/table_sessions for those
+            # tables, but harmless, and keeping one zone list is simpler
+            # than maintaining a second table-only one.
+            self.zones = ensure_table_zones(
+                supabase_url, supabase_key, self.restaurant_id, self.camera_id,
+                self.table_regions, self.zones,
+            )
         if not self.zones:
             print("[info] no zones configured for this camera - zone_occupancy readings will not be sent.")
 
@@ -301,9 +530,12 @@ class OccupancyDetector:
         self.device_id = self.device["id"]
         self._stream_ids = {}
 
+        zone_id_by_table = build_table_zone_map(self.table_regions, self.zones)
+        table_numbers = [t["table_number"] for t in self.table_regions]
         self.session_tracker = SessionTracker(
             supabase_url, supabase_key, self.restaurant_id,
             session_start_minutes, session_end_minutes,
+            table_numbers=table_numbers, zone_id_by_table=zone_id_by_table,
         )
 
         if self.simulate:
@@ -319,7 +551,7 @@ class OccupancyDetector:
             self.cv2 = cv2
             self.cap = cv2.VideoCapture(self.rtsp_url)
             if not self.cap.isOpened():
-                raise ValueError(f"Cannot open RTSP stream: {self.rtsp_url}")
+                raise ValueError(f"Cannot open video source: {self.rtsp_url}")
             self.person_detector = self.load_detector()
 
     def load_detector(self):
@@ -424,7 +656,17 @@ class OccupancyDetector:
             or list(range(1, total_tables + 1))
         )
         occupied_set = set(random.sample(table_numbers, min(occupied_tables, len(table_numbers)))) if table_numbers else set()
-        table_occupancy = {tn: (tn in occupied_set) for tn in table_numbers}
+        # Synthetic estimate/confidence, same shape a real camera produces,
+        # so --simulate exercises the exact same session-writer code path
+        # (including the occupancy_estimate/detection_confidence fields).
+        table_occupancy = {
+            tn: {
+                'occupied': tn in occupied_set,
+                'estimate': random.randint(1, 4) if tn in occupied_set else 0,
+                'confidence': round(random.uniform(0.55, 0.95), 3) if tn in occupied_set else None,
+            }
+            for tn in table_numbers
+        }
 
         zone_counts = {}
         for zone in self.zones:
@@ -433,8 +675,13 @@ class OccupancyDetector:
         return snapshot, table_occupancy, zone_counts
 
     def detect_table_occupancy(self, people, frame):
-        """Per-table occupied/empty state, keyed by table_number - not just
-        a count. Session detection needs to know WHICH table transitioned."""
+        """Per-table occupied/empty state, keyed by table_number, each
+        carrying an occupancy_estimate (count of person detections whose
+        centroid falls in the table's region) and detection_confidence
+        (mean YOLO box confidence among them). confidence is null when the
+        table reads empty - never a fabricated 0.0 standing in for "no
+        detection". Session detection needs to know WHICH table
+        transitioned, not just an aggregate count."""
         h, w = frame.shape[:2]
         occupancy = {}
 
@@ -444,11 +691,19 @@ class OccupancyDetector:
             x2 = int(table['x2'] * w)
             y2 = int(table['y2'] * h)
 
-            occupied = any(
-                x1 <= person['x'] <= x2 and y1 <= person['y'] <= y2
-                for person in people
+            in_region = [
+                person for person in people
+                if x1 <= person['x'] <= x2 and y1 <= person['y'] <= y2
+            ]
+            confidence = (
+                round(sum(p['confidence'] for p in in_region) / len(in_region), 3)
+                if in_region else None
             )
-            occupancy[table['table_number']] = occupied
+            occupancy[table['table_number']] = {
+                'occupied': len(in_region) > 0,
+                'estimate': len(in_region),
+                'confidence': confidence,
+            }
 
         return occupancy
 
@@ -495,7 +750,7 @@ class OccupancyDetector:
 
         people = self.detect_people(frame)
         table_occupancy = self.detect_table_occupancy(people, frame)
-        occupied_tables = sum(1 for occupied in table_occupancy.values() if occupied)
+        occupied_tables = sum(1 for state in table_occupancy.values() if state['occupied'])
         total_tables = len(table_occupancy)
         available_tables = total_tables - occupied_tables
         queue_length = self.detect_queue(people, frame)
@@ -653,6 +908,26 @@ class OccupancyDetector:
                     if table_occupancy:
                         self.session_tracker.update(table_occupancy, datetime.now())
 
+                    # Per-zone health heartbeat - a successful cycle means
+                    # every zone this camera tracks is healthy, whatever
+                    # its occupancy count. Dropped frames are handled below.
+                    for zone in self.zones:
+                        upsert_source_health(
+                            self.supabase_url, self.supabase_key, self.restaurant_id,
+                            'cctv_zone', zone['id'], 'healthy',
+                        )
+                elif not self.simulate:
+                    # capture_snapshot returned None: a dropped/unreadable
+                    # frame. Not necessarily any one zone's fault, so flag
+                    # all of this camera's zones rather than guessing which
+                    # one - a stale flag here is a prompt to check the
+                    # camera, not a precise per-zone diagnosis.
+                    for zone in self.zones:
+                        upsert_source_health(
+                            self.supabase_url, self.supabase_key, self.restaurant_id,
+                            'cctv_zone', zone['id'], 'error', 'dropped frame (cap.read() returned False)',
+                        )
+
                 time.sleep(self.snapshot_interval)
 
             except KeyboardInterrupt:
@@ -664,6 +939,11 @@ class OccupancyDetector:
                     self.supabase_url, self.supabase_key, self.camera_id,
                     status='error', last_error=str(e)[:500],
                 )
+                for zone in self.zones:
+                    upsert_source_health(
+                        self.supabase_url, self.supabase_key, self.restaurant_id,
+                        'cctv_zone', zone['id'], 'error', str(e)[:500],
+                    )
                 time.sleep(10)  # Wait before retrying
 
         if self.cap is not None:
@@ -678,6 +958,14 @@ def main():
         help="Post realistic fake occupancy snapshots instead of reading a camera - "
              "no RTSP stream, opencv, or detector model required. Useful for demos, "
              "dev, and exercising the ingestion path without a Pi.",
+    )
+    parser.add_argument(
+        "--source",
+        default=None,
+        help="Override this camera's configured rtsp_url for this run only - a "
+             "local file path works (cv2.VideoCapture accepts one transparently), "
+             "so the real detector/session-writer path can be tested against a "
+             "recorded video without editing the camera's DB row. Ignored with --simulate.",
     )
     args = parser.parse_args()
 
@@ -700,6 +988,7 @@ def main():
     detector = OccupancyDetector(
         config, supabase_url, supabase_key, simulate=args.simulate,
         session_start_minutes=session_start_minutes, session_end_minutes=session_end_minutes,
+        source=args.source,
     )
     detector.run()
 
